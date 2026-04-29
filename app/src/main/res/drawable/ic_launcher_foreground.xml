@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ShaRemove icon: a bottom sheet rising from the bottom with four app dots —
+  three lit (visible in chooser) and one crossed out (hidden). The sheet handle
+  sits at the top. Designed for the 72dp adaptive icon safe zone (18dp margin
+  each side in a 108×108 viewport).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- ── Sheet body (white, rounded top corners) ── -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="
+            M22,50
+            Q22,45 27,45
+            L81,45
+            Q86,45 86,50
+            L86,88
+            L22,88
+            Z" />
+
+    <!-- ── Sheet drag handle ── -->
+    <path
+        android:pathData="M47,50 L61,50"
+        android:strokeColor="#C8D8C8"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round" />
+
+    <!-- ── Row of app dots ── -->
+
+    <!-- App 1: visible — soft teal -->
+    <path
+        android:fillColor="#4DB88A"
+        android:pathData="M36,67 m-8,0 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0" />
+
+    <!-- App 2: visible — blue -->
+    <path
+        android:fillColor="#5B9BD5"
+        android:pathData="M54,67 m-8,0 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0" />
+
+    <!-- App 3: visible — amber -->
+    <path
+        android:fillColor="#F2A93B"
+        android:pathData="M72,67 m-8,0 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0" />
+
+    <!-- App 4 (bottom-left): hidden — grey circle -->
+    <path
+        android:fillColor="#D0D0D0"
+        android:pathData="M36,80 m-8,0 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0" />
+
+    <!-- X on hidden app -->
+    <path
+        android:pathData="M32.5,76.5 L39.5,83.5"
+        android:strokeColor="#E53935"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M39.5,76.5 L32.5,83.5"
+        android:strokeColor="#E53935"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round" />
+
+    <!-- App 5 (bottom-center): visible — purple -->
+    <path
+        android:fillColor="#9C6FD6"
+        android:pathData="M54,80 m-8,0 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0" />
+
+    <!-- App 6 (bottom-right): visible — coral -->
+    <path
+        android:fillColor="#E8735A"
+        android:pathData="M72,80 m-8,0 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0" />
+
+</vector>
