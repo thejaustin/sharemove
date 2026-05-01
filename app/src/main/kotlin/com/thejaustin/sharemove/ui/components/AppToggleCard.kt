@@ -43,8 +43,11 @@ fun AppToggleCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             entry.icon?.let { drawable ->
+                val iconBitmap = remember(drawable) {
+                    drawable.toBitmap(48, 48).asImageBitmap()
+                }
                 Image(
-                    bitmap = drawable.toBitmap(48, 48).asImageBitmap(),
+                    bitmap = iconBitmap,
                     contentDescription = null,
                     modifier = Modifier
                         .size(40.dp)
@@ -122,7 +125,6 @@ fun AppToggleCard(
                         Switch(
                             checked         = entry.isDisabled,
                             onCheckedChange = { onToggleDisabled() },
-                            modifier        = Modifier.size(32.dp),
                         )
                     }
                 }

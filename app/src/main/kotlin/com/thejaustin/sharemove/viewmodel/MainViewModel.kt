@@ -34,18 +34,26 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val selectedCategory: StateFlow<IntentCategory> = _selectedCategory.asStateFlow()
 
     private val _uiState = MutableStateFlow(UiState())
-    val uiState: StateFlow<UiState> = _uiState.asStateFlow()
+    val uiState: StateFlow<UiState> = _selectedCategory
+        .flatMapLatest { category ->
+            combine(
+                prefsRepo.hiddenPackages(category),
+                prefsRepo.disabledPackages(category),
+                _uiState.map { it.copy(isLoading = false) }.onStart { emit(_uiState.value.copy(isLoading = true)) }
+            ) { hidden, disabled, internal ->
+                val apps = withContext(Dispatchers.IO) {
+                    chooserRepo.queryApps(category, hidden, disabled)
+                }
+                internal.copy(apps = apps, isLoading = false)
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UiState())
 
     private val _snackbar = MutableSharedFlow<String>()
     val snackbar: SharedFlow<String> = _snackbar.asSharedFlow()
 
     init {
         refreshShizuku()
-        viewModelScope.launch {
-            _selectedCategory.collectLatest { category ->
-                loadApps(category)
-            }
-        }
     }
 
     fun selectCategory(category: IntentCategory) {
@@ -62,24 +70,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun requestShizukuPermission() = ShizukuHelper.requestPermission(1001)
-
-    private fun loadApps(category: IntentCategory) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-
-            combine(
-                prefsRepo.hiddenPackages(category),
-                prefsRepo.disabledPackages(category),
-            ) { hidden, disabled -> Pair(hidden, disabled) }
-                .take(1)
-                .collect { (hidden, disabled) ->
-                    val apps = withContext(Dispatchers.IO) {
-                        chooserRepo.queryApps(category, hidden, disabled)
-                    }
-                    _uiState.update { it.copy(apps = apps, isLoading = false) }
-                }
-        }
-    }
 
     fun toggleHidden(entry: AppEntry) {
         viewModelScope.launch {
@@ -100,7 +90,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             result.fold(
                 onSuccess = {
                     prefsRepo.setHidden(_selectedCategory.value, entry.packageName, targetHidden)
-                    loadApps(_selectedCategory.value)
                 },
                 onFailure = { _snackbar.emit(it.message ?: "Command failed") },
             )
@@ -126,7 +115,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             result.fold(
                 onSuccess = {
                     prefsRepo.setDisabled(_selectedCategory.value, entry.packageName, targetDisabled)
-                    loadApps(_selectedCategory.value)
                 },
                 onFailure = { _snackbar.emit(it.message ?: "Command failed") },
             )

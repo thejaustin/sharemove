@@ -34,11 +34,9 @@ object ShizukuHelper {
         for (path in candidates) {
             if (!File(path).exists()) continue
             return try {
-                val env = arrayOf(
-                    "RISH_APPLICATION_ID=com.thejaustin.sharemove",
-                    "LD_LIBRARY_PATH=/data/local/tmp",
-                )
-                val process = Runtime.getRuntime().exec(arrayOf(path, "-c", command), env)
+                val pb = ProcessBuilder(path, "-c", command)
+                pb.environment()["RISH_APPLICATION_ID"] = "com.thejaustin.sharemove"
+                val process = pb.start()
                 val stdout = process.inputStream.bufferedReader().readText()
                 val stderr = process.errorStream.bufferedReader().readText()
                 val exit   = process.waitFor()
