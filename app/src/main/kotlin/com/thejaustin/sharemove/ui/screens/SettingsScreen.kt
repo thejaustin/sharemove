@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.thejaustin.sharemove.data.model.HideMode
 import com.thejaustin.sharemove.viewmodel.MainViewModel
 
@@ -16,7 +17,7 @@ fun SettingsScreen(
     viewModel: MainViewModel,
     onBack: () -> Unit,
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -40,9 +41,13 @@ fun SettingsScreen(
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Shizuku", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        text  = if (state.shizukuAvailable) "Connected" else "Not running",
+                        text  = when {
+                            state.shizukuAvailable && state.shizukuPermission -> "Connected"
+                            state.shizukuAvailable                            -> "Running — permission needed"
+                            else                                              -> "Not running"
+                        },
                         style = MaterialTheme.typography.bodyMedium,
-                        color = if (state.shizukuAvailable)
+                        color = if (state.shizukuAvailable && state.shizukuPermission)
                             MaterialTheme.colorScheme.primary
                         else
                             MaterialTheme.colorScheme.error,
@@ -72,9 +77,28 @@ fun SettingsScreen(
             Card {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Hide mode", style = MaterialTheme.typography.titleMedium)
+
+                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                        SegmentedButton(
+                            selected = state.hideMode == HideMode.SUSPEND,
+                            onClick  = { viewModel.setHideMode(HideMode.SUSPEND) },
+                            shape    = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                        ) { Text("Suspend") }
+                        SegmentedButton(
+                            selected = state.hideMode == HideMode.COMPONENT,
+                            onClick  = { viewModel.setHideMode(HideMode.COMPONENT) },
+                            shape    = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                        ) { Text("Component") }
+                    }
+
                     val modeText = when (state.hideMode) {
-                        HideMode.COMPONENT -> "Component-level (root) — surgical, app stays fully functional, no launcher effect"
-                        HideMode.SUSPEND   -> "Package suspend (Shizuku) — app paused, data intact, icon greyed in launcher"
+                        HideMode.SUSPEND ->
+                            "Package suspend — the whole app is paused, data intact. " +
+                                "Its icon is greyed out in the launcher."
+                        HideMode.COMPONENT ->
+                            "Component-level — only the activity handling this intent is " +
+                                "disabled. Surgical, but can affect the app's launcher entry " +
+                                "if it routes everything through one activity."
                     }
                     Text(
                         text  = modeText,

@@ -106,8 +106,9 @@ jobs:
             - [Shizuku](https://github.com/RikkaApps/Shizuku) running **or** a rooted device
 
             ### How it works
-            - **Shizuku (non-root):** uses `pm suspend` to pause the package — hides it from all chooser sheets, app data intact
-            - **Root:** uses `pm disable-user` on the specific activity component — surgical hide, no effect on launcher or rest of app
+            - **Suspend mode:** `pm suspend` pauses the package — hidden from choosers, app data intact
+            - **Component mode:** `pm disable-user` on the specific activity — surgical, per-intent hide
+            - Both modes work through **Shizuku** (no root required) or **root**
 
             ### Install
             1. Download the `.apk` file below

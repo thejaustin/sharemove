@@ -3,39 +3,48 @@ package com.thejaustin.sharemove.data.repository
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.content.pm.ResolveInfo
+import android.net.Uri
 import com.thejaustin.sharemove.data.model.AppEntry
-import com.thejaustin.sharemove.data.model.HideMode
 import com.thejaustin.sharemove.data.model.IntentCategory
 import com.thejaustin.sharemove.shizuku.RootHelper
 import com.thejaustin.sharemove.shizuku.ShizukuHelper
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+/** Which privileged backend executes pm commands. */
+enum class Backend { SHIZUKU, ROOT }
 
 class ChooserRepository(private val context: Context) {
 
     private val pm: PackageManager get() = context.packageManager
 
     /** Enumerate all apps that handle [category], annotated with stored preferences. */
-    fun queryApps(
+    suspend fun queryApps(
         category: IntentCategory,
         hiddenPackages: Set<String>,
         disabledPackages: Set<String>,
-    ): List<AppEntry> {
+    ): List<AppEntry> = withContext(Dispatchers.IO) {
         val intent = Intent(category.action).apply {
             category.mimeType?.let { type = it }
-            category.scheme?.let { data = android.net.Uri.parse("$it://example.com") }
+            category.scheme?.let { data = Uri.parse("$it://example.com") }
         }
 
+        // MATCH_DISABLED_COMPONENTS keeps pm-disabled apps in the list so they
+        // can be re-enabled from the UI after being hidden or disabled.
         @Suppress("DEPRECATION")
-        val resolved: List<ResolveInfo> = pm.queryIntentActivities(intent, 0)
+        val resolved = pm.queryIntentActivities(
+            intent,
+            PackageManager.MATCH_ALL or PackageManager.MATCH_DISABLED_COMPONENTS,
+        )
 
-        return resolved
+        val entries = resolved
             .filter { it.activityInfo.packageName != context.packageName }
+            .distinctBy { it.activityInfo.packageName }
             .map { ri ->
                 val pkg = ri.activityInfo.packageName
-                val comp = "${ri.activityInfo.packageName}/${ri.activityInfo.name}"
                 AppEntry(
                     packageName   = pkg,
-                    componentName = comp,
+                    componentName = "$pkg/${ri.activityInfo.name}",
                     label         = ri.loadLabel(pm).toString(),
                     icon          = ri.loadIcon(pm),
                     category      = category,
@@ -43,42 +52,66 @@ class ChooserRepository(private val context: Context) {
                     isDisabled    = pkg in disabledPackages,
                 )
             }
-            .sortedBy { it.label.lowercase() }
+
+        // Apps with stored state that dropped out of resolution entirely (some OEMs
+        // exclude suspended apps) must stay listed so the user can restore them.
+        val resolvedPackages = entries.mapTo(mutableSetOf()) { it.packageName }
+        val ghosts = (hiddenPackages + disabledPackages)
+            .filterNot { it in resolvedPackages }
+            .mapNotNull { pkg ->
+                installedEntryOrNull(pkg, category, hiddenPackages, disabledPackages)
+            }
+
+        (entries + ghosts).sortedBy { it.label.lowercase() }
     }
 
-    // ── Hide / show (non-root: pm suspend) ──────────────────────────────────
+    private fun installedEntryOrNull(
+        packageName: String,
+        category: IntentCategory,
+        hiddenPackages: Set<String>,
+        disabledPackages: Set<String>,
+    ): AppEntry? = try {
+        @Suppress("DEPRECATION")
+        val info = pm.getApplicationInfo(packageName, PackageManager.MATCH_UNINSTALLED_PACKAGES)
+        AppEntry(
+            packageName   = packageName,
+            componentName = null,
+            label         = info.loadLabel(pm).toString(),
+            icon          = info.loadIcon(pm),
+            category      = category,
+            isHidden      = packageName in hiddenPackages,
+            isDisabled    = packageName in disabledPackages,
+        )
+    } catch (_: PackageManager.NameNotFoundException) {
+        null
+    }
 
-    fun hidePackage(packageName: String): Result<Unit> =
-        ShizukuHelper.runCommand("pm suspend --user 0 $packageName").map { }
+    // ── Privileged pm commands ───────────────────────────────────────────────
 
-    fun showPackage(packageName: String): Result<Unit> =
-        ShizukuHelper.runCommand("pm unsuspend --user 0 $packageName").map { }
+    suspend fun setPackageHidden(packageName: String, hidden: Boolean, backend: Backend): Result<Unit> =
+        run(
+            if (hidden) "pm suspend --user 0 $packageName"
+            else        "pm unsuspend --user 0 $packageName",
+            backend,
+        )
 
-    // ── Hide / show component (root only) ───────────────────────────────────
+    suspend fun setComponentHidden(componentName: String, hidden: Boolean, backend: Backend): Result<Unit> =
+        run(
+            // Single quotes: component names may contain $ (inner-class activities)
+            if (hidden) "pm disable-user --user 0 '$componentName'"
+            else        "pm enable --user 0 '$componentName'",
+            backend,
+        )
 
-    fun hideComponent(componentName: String): Result<Unit> =
-        RootHelper.runCommand("pm disable-user --user 0 $componentName").map { }
+    suspend fun setPackageDisabled(packageName: String, disabled: Boolean, backend: Backend): Result<Unit> =
+        run(
+            if (disabled) "pm disable-user --user 0 $packageName"
+            else          "pm enable --user 0 $packageName",
+            backend,
+        )
 
-    fun showComponent(componentName: String): Result<Unit> =
-        RootHelper.runCommand("pm enable --user 0 $componentName").map { }
-
-    // ── Full disable / enable ───────────────────────────────────────────────
-
-    fun disablePackage(packageName: String): Result<Unit> =
-        ShizukuHelper.runCommand("pm disable-user --user 0 $packageName").map { }
-
-    fun enablePackage(packageName: String): Result<Unit> =
-        ShizukuHelper.runCommand("pm enable --user 0 $packageName").map { }
-
-    // ── Root component disable (full package) ───────────────────────────────
-
-    fun disablePackageRoot(packageName: String): Result<Unit> =
-        RootHelper.runCommand("pm disable-user --user 0 $packageName").map { }
-
-    fun enablePackageRoot(packageName: String): Result<Unit> =
-        RootHelper.runCommand("pm enable --user 0 $packageName").map { }
-
-    /** Determine available hide mode based on runtime capabilities. */
-    val hideMode: HideMode
-        get() = if (RootHelper.isAvailable) HideMode.COMPONENT else HideMode.SUSPEND
+    private suspend fun run(command: String, backend: Backend): Result<Unit> = when (backend) {
+        Backend.ROOT    -> RootHelper.runCommand(command)
+        Backend.SHIZUKU -> ShizukuHelper.runCommand(command)
+    }.map { }
 }

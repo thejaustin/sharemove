@@ -1,8 +1,9 @@
 package com.thejaustin.sharemove.shizuku
 
 import android.content.pm.PackageManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import rikka.shizuku.Shizuku
-import java.io.File
 
 object ShizukuHelper {
 
@@ -20,32 +21,34 @@ object ShizukuHelper {
         catch (_: Exception) { }
     }
 
-    fun runCommand(command: String): Result<String> {
-        if (!isAvailable)   return Result.failure(Exception("Shizuku is not running"))
-        if (!hasPermission) return Result.failure(Exception("Shizuku permission not granted"))
-        return runViaRish(command)
+    /** Run a shell command as the Shizuku identity (shell uid). */
+    suspend fun runCommand(command: String): Result<String> = withContext(Dispatchers.IO) {
+        if (!isAvailable)   return@withContext Result.failure(Exception("Shizuku is not running"))
+        if (!hasPermission) return@withContext Result.failure(Exception("Shizuku permission not granted"))
+        try {
+            val process = newProcess(arrayOf("sh", "-c", command))
+            val stdout = process.inputStream.bufferedReader().readText()
+            val stderr = process.errorStream.bufferedReader().readText()
+            val exit   = process.waitFor()
+            if (exit == 0)
+                Result.success(stdout.trim())
+            else
+                Result.failure(Exception("shizuku($exit): ${stderr.ifBlank { stdout }.trim()}"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
-    private fun runViaRish(command: String): Result<String> {
-        val candidates = listOf(
-            "/data/local/tmp/rish",
-            "/data/data/com.termux/files/home/rish",
+    // Shizuku.newProcess is private API but the de-facto stable way to spawn a remote
+    // shell; proguard-rules.pro keeps all of rikka.shizuku so reflection survives R8.
+    private fun newProcess(cmd: Array<String>): Process {
+        val method = Shizuku::class.java.getDeclaredMethod(
+            "newProcess",
+            Array<String>::class.java,
+            Array<String>::class.java,
+            String::class.java,
         )
-        for (path in candidates) {
-            if (!File(path).exists()) continue
-            return try {
-                val pb = ProcessBuilder(path, "-c", command)
-                pb.environment()["RISH_APPLICATION_ID"] = "com.thejaustin.sharemove"
-                val process = pb.start()
-                val stdout = process.inputStream.bufferedReader().readText()
-                val stderr = process.errorStream.bufferedReader().readText()
-                val exit   = process.waitFor()
-                if (exit != 0 && stderr.isNotBlank())
-                    Result.failure(Exception("rish($exit): $stderr"))
-                else
-                    Result.success(stdout.trim())
-            } catch (e: Exception) { Result.failure(e) }
-        }
-        return Result.failure(Exception("rish not found — is Shizuku installed?"))
+        method.isAccessible = true
+        return method.invoke(null, cmd, null, null) as Process
     }
 }
