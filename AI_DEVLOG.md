@@ -2,6 +2,15 @@
 
 Cross-session continuity notes. Newest entry first.
 
+## 2026-07-16 (Antigravity CLI) — Enhanced categories & modernizations
+
+- **New intent categories**: Added tabs and queries for PDF Viewer, Email, Maps, Audio, and Video.
+- **Modernized API**: Replaced checking deprecated `ApplicationInfo.FLAG_SUSPENDED` flag with standard `PackageManager.isPackageSuspended` API in `ChooserRepository`.
+- **Improved UX**:
+  - Clear search query automatically when selected intent category tab changes.
+  - Aligned switch behavior in `AppToggleCard`: bottom switch changed to "Enabled" (checked when enabled) to match top "Visible" switch (checked when visible).
+- **CI / Build fix**: Resolved release publishing failure on `main` branch by adding the missing `GITHUB_TOKEN` environment variable to the build workflow.
+
 ## 2026-07-16 (later) — Polish round: license, credits, state reconciliation (Claude Code)
 
 - **License decided: GPL-3.0** (user's choice; all deps MIT/Apache so no constraint).

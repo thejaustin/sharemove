@@ -114,6 +114,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun selectCategory(category: IntentCategory) {
         _selectedCategory.value = category
+        _searchQuery.value = ""
     }
 
     fun setSearchQuery(query: String) {

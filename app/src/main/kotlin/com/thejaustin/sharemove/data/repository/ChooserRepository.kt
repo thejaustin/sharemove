@@ -3,7 +3,6 @@ package com.thejaustin.sharemove.data.repository
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.net.Uri
 import com.thejaustin.sharemove.data.model.AppEntry
@@ -111,8 +110,7 @@ class ChooserRepository(private val context: Context) {
     // ── System-truth state checks ────────────────────────────────────────────
 
     private fun isPackageSuspended(packageName: String): Boolean = try {
-        @Suppress("DEPRECATION")
-        (pm.getApplicationInfo(packageName, 0).flags and ApplicationInfo.FLAG_SUSPENDED) != 0
+        pm.isPackageSuspended(packageName)
     } catch (_: Exception) {
         false
     }

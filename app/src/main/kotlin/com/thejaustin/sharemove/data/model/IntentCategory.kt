@@ -16,6 +16,21 @@ enum class IntentCategory(
         action      = "android.intent.action.VIEW",
         scheme      = "https",
     ),
+    PDF_VIEWER(
+        displayName = "PDF Viewer",
+        action      = "android.intent.action.VIEW",
+        mimeType    = "application/pdf",
+    ),
+    EMAIL(
+        displayName = "Email",
+        action      = "android.intent.action.SENDTO",
+        scheme      = "mailto",
+    ),
+    MAPS(
+        displayName = "Maps",
+        action      = "android.intent.action.VIEW",
+        scheme      = "geo",
+    ),
     SHARE_TEXT(
         displayName = "Share: Text",
         action      = "android.intent.action.SEND",
@@ -30,5 +45,15 @@ enum class IntentCategory(
         displayName = "Share: Files",
         action      = "android.intent.action.SEND",
         mimeType    = "*/*",
+    ),
+    AUDIO_PLAYER(
+        displayName = "Audio",
+        action      = "android.intent.action.VIEW",
+        mimeType    = "audio/*",
+    ),
+    VIDEO_PLAYER(
+        displayName = "Video",
+        action      = "android.intent.action.VIEW",
+        mimeType    = "video/*",
     ),
 }
