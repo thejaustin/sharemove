@@ -58,6 +58,9 @@ class PreferencesRepository(private val context: Context) {
         }
     }
 
+    fun hiddenComponents(category: IntentCategory): Flow<Set<String>> =
+        context.dataStore.data.map { it[hiddenComponentsKey(category)] ?: emptySet() }
+
     /** Component recorded when [packageName] was hidden in COMPONENT mode, if any. */
     suspend fun hiddenComponentFor(category: IntentCategory, packageName: String): String? =
         context.dataStore.data.first()[hiddenComponentsKey(category)]

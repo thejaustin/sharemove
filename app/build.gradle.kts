@@ -2,7 +2,6 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.1.0"
 }
 
 android {
@@ -56,14 +55,12 @@ dependencies {
 
     implementation(libs.lifecycle.viewmodel)
     implementation(libs.lifecycle.runtime)
-    implementation(libs.navigation.compose)
 
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)
 
     implementation(libs.datastore)
     implementation(libs.coroutines)
-    implementation(libs.kotlinx.serialization.json)
 
     debugImplementation(libs.compose.ui.tooling)
 }

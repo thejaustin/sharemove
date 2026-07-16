@@ -2,6 +2,28 @@
 
 Cross-session continuity notes. Newest entry first.
 
+## 2026-07-16 (later) — Polish round: license, credits, state reconciliation (Claude Code)
+
+- **License decided: GPL-3.0** (user's choice; all deps MIT/Apache so no constraint).
+  LICENSE file + README section + in-app About card.
+- **Credits**: README Acknowledgements section + in-app Acknowledgements card in
+  Settings (Shizuku/Shizuku-API by RikkaApps, Jetpack Compose/AndroidX, Kotlin).
+- **State reconciliation**: `isHidden`/`isDisabled` now read from system truth
+  (`ApplicationInfo.FLAG_SUSPENDED`, `getApplicationEnabledSetting`,
+  `getComponentEnabledSetting` — prefers the *recorded* hidden component over the
+  first-resolved one) instead of trusting stored prefs. UI self-heals after external
+  changes (adb, other manager apps). Prefs remain as intent record for ghost entries
+  and restore method.
+- **Back handling fixed**: system back from Settings previously exited the app
+  (boolean nav had no BackHandler).
+- **Refresh action** in Home top bar (re-query apps + capabilities).
+- **About card**: version (from PackageManager, no BuildConfig needed), Source /
+  Releases / Report issue links. Settings column is now scrollable.
+- **Dep cleanup**: removed unused navigation-compose and kotlinx-serialization
+  (plugin + lib) — nav is a rememberSaveable boolean, nothing serialized JSON.
+- **Repo**: GitHub topics added (android, shizuku, root, jetpack-compose, material3,
+  share-sheet, intent-chooser).
+
 ## 2026-07-16 — Full build-out (Claude Code)
 
 Repo was a 3-commit scaffold (last CI build green). This session set up the local

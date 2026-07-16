@@ -1,7 +1,9 @@
 package com.thejaustin.sharemove.data.repository
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.net.Uri
 import com.thejaustin.sharemove.data.model.AppEntry
@@ -14,15 +16,28 @@ import kotlinx.coroutines.withContext
 /** Which privileged backend executes pm commands. */
 enum class Backend { SHIZUKU, ROOT }
 
+private val DISABLED_STATES = setOf(
+    PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+    PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER,
+    PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED,
+)
+
 class ChooserRepository(private val context: Context) {
 
     private val pm: PackageManager get() = context.packageManager
 
-    /** Enumerate all apps that handle [category], annotated with stored preferences. */
+    /**
+     * Enumerate all apps that handle [category].
+     *
+     * Hidden/disabled status is read back from the system (suspended flag, enabled
+     * settings) rather than trusted from stored prefs, so the UI stays correct even
+     * when state was changed externally (adb, another manager app, a reboot quirk).
+     */
     suspend fun queryApps(
         category: IntentCategory,
         hiddenPackages: Set<String>,
         disabledPackages: Set<String>,
+        hiddenComponents: Set<String>,
     ): List<AppEntry> = withContext(Dispatchers.IO) {
         val intent = Intent(category.action).apply {
             category.mimeType?.let { type = it }
@@ -41,15 +56,19 @@ class ChooserRepository(private val context: Context) {
             .filter { it.activityInfo.packageName != context.packageName }
             .distinctBy { it.activityInfo.packageName }
             .map { ri ->
-                val pkg = ri.activityInfo.packageName
+                val pkg  = ri.activityInfo.packageName
+                val comp = "$pkg/${ri.activityInfo.name}"
+                // The component the user actually hid may differ from the one the
+                // resolver happened to return first — prefer the recorded one.
+                val storedComp = hiddenComponents.firstOrNull { it.substringBefore('/') == pkg }
                 AppEntry(
                     packageName   = pkg,
-                    componentName = "$pkg/${ri.activityInfo.name}",
+                    componentName = comp,
                     label         = ri.loadLabel(pm).toString(),
                     icon          = ri.loadIcon(pm),
                     category      = category,
-                    isHidden      = pkg in hiddenPackages,
-                    isDisabled    = pkg in disabledPackages,
+                    isHidden      = isPackageSuspended(pkg) || isComponentDisabled(storedComp ?: comp),
+                    isDisabled    = isPackageDisabled(pkg),
                 )
             }
 
@@ -59,7 +78,7 @@ class ChooserRepository(private val context: Context) {
         val ghosts = (hiddenPackages + disabledPackages)
             .filterNot { it in resolvedPackages }
             .mapNotNull { pkg ->
-                installedEntryOrNull(pkg, category, hiddenPackages, disabledPackages)
+                installedEntryOrNull(pkg, category, hiddenPackages, hiddenComponents)
             }
 
         (entries + ghosts).sortedBy { it.label.lowercase() }
@@ -69,21 +88,46 @@ class ChooserRepository(private val context: Context) {
         packageName: String,
         category: IntentCategory,
         hiddenPackages: Set<String>,
-        disabledPackages: Set<String>,
+        hiddenComponents: Set<String>,
     ): AppEntry? = try {
         @Suppress("DEPRECATION")
         val info = pm.getApplicationInfo(packageName, PackageManager.MATCH_UNINSTALLED_PACKAGES)
+        val storedComp = hiddenComponents.firstOrNull { it.substringBefore('/') == packageName }
         AppEntry(
             packageName   = packageName,
             componentName = null,
             label         = info.loadLabel(pm).toString(),
             icon          = info.loadIcon(pm),
             category      = category,
-            isHidden      = packageName in hiddenPackages,
-            isDisabled    = packageName in disabledPackages,
+            isHidden      = isPackageSuspended(packageName) ||
+                (storedComp != null && isComponentDisabled(storedComp)) ||
+                packageName in hiddenPackages,
+            isDisabled    = isPackageDisabled(packageName),
         )
     } catch (_: PackageManager.NameNotFoundException) {
         null
+    }
+
+    // ── System-truth state checks ────────────────────────────────────────────
+
+    private fun isPackageSuspended(packageName: String): Boolean = try {
+        @Suppress("DEPRECATION")
+        (pm.getApplicationInfo(packageName, 0).flags and ApplicationInfo.FLAG_SUSPENDED) != 0
+    } catch (_: Exception) {
+        false
+    }
+
+    private fun isPackageDisabled(packageName: String): Boolean = try {
+        pm.getApplicationEnabledSetting(packageName) in DISABLED_STATES
+    } catch (_: Exception) {
+        false
+    }
+
+    private fun isComponentDisabled(componentName: String): Boolean = try {
+        val cn = ComponentName.unflattenFromString(componentName)
+        cn != null && pm.getComponentEnabledSetting(cn) in DISABLED_STATES
+    } catch (_: Exception) {
+        false
     }
 
     // ── Privileged pm commands ───────────────────────────────────────────────
