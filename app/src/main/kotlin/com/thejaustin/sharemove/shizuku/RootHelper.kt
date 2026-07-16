@@ -1,27 +1,27 @@
 package com.thejaustin.sharemove.shizuku
 
-import java.io.DataOutputStream
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 object RootHelper {
 
-    val isAvailable: Boolean
-        get() = try {
-            Runtime.getRuntime().exec("which su").waitFor() == 0
-        } catch (_: Exception) { false }
+    /** Blocking; call from a background dispatcher. */
+    fun checkAvailable(): Boolean = try {
+        Runtime.getRuntime().exec(arrayOf("which", "su")).waitFor() == 0
+    } catch (_: Exception) { false }
 
-    fun runCommand(command: String): Result<String> = try {
-        val process = Runtime.getRuntime().exec("su")
-        DataOutputStream(process.outputStream).use { os ->
-            os.writeBytes("$command\n")
-            os.writeBytes("exit\n")
-            os.flush()
+    suspend fun runCommand(command: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
+            val stdout = process.inputStream.bufferedReader().readText()
+            val stderr = process.errorStream.bufferedReader().readText()
+            val exit   = process.waitFor()
+            if (exit == 0)
+                Result.success(stdout.trim())
+            else
+                Result.failure(Exception("root($exit): ${stderr.ifBlank { stdout }.trim()}"))
+        } catch (e: Exception) {
+            Result.failure(e)
         }
-        val stdout = process.inputStream.bufferedReader().readText()
-        val stderr = process.errorStream.bufferedReader().readText()
-        val exit   = process.waitFor()
-        if (exit != 0 && stderr.isNotBlank())
-            Result.failure(Exception("root($exit): $stderr"))
-        else
-            Result.success(stdout.trim())
-    } catch (e: Exception) { Result.failure(e) }
+    }
 }

@@ -1,54 +1,69 @@
 package com.thejaustin.sharemove
 
-import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.thejaustin.sharemove.ui.screens.HomeScreen
 import com.thejaustin.sharemove.ui.screens.SettingsScreen
 import com.thejaustin.sharemove.ui.theme.ShaRemoveTheme
 import com.thejaustin.sharemove.viewmodel.MainViewModel
 import rikka.shizuku.Shizuku
 
-class MainActivity : ComponentActivity(), Shizuku.OnRequestPermissionResultListener {
+class MainActivity : ComponentActivity() {
+
+    private val viewModel: MainViewModel by viewModels()
+
+    private val permissionListener =
+        Shizuku.OnRequestPermissionResultListener { _, _ -> viewModel.refreshCapabilities() }
+    private val binderReceivedListener =
+        Shizuku.OnBinderReceivedListener { viewModel.refreshCapabilities() }
+    private val binderDeadListener =
+        Shizuku.OnBinderDeadListener { viewModel.refreshCapabilities() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        Shizuku.addRequestPermissionResultListener(this)
+        Shizuku.addRequestPermissionResultListener(permissionListener)
+        Shizuku.addBinderReceivedListenerSticky(binderReceivedListener)
+        Shizuku.addBinderDeadListener(binderDeadListener)
         setContent {
             ShaRemoveTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    ShaRemoveApp()
+                    ShaRemoveApp(viewModel)
                 }
             }
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        Shizuku.removeRequestPermissionResultListener(this)
+    override fun onResume() {
+        super.onResume()
+        // User may have started Shizuku, granted root, or (un)installed apps meanwhile.
+        viewModel.refreshCapabilities()
+        viewModel.refreshApps()
     }
 
-    override fun onRequestPermissionResult(requestCode: Int, grantResult: Int) {
-        // ViewModel re-checks on next composition
+    override fun onDestroy() {
+        super.onDestroy()
+        Shizuku.removeRequestPermissionResultListener(permissionListener)
+        Shizuku.removeBinderReceivedListener(binderReceivedListener)
+        Shizuku.removeBinderDeadListener(binderDeadListener)
     }
 }
 
 @Composable
-private fun ShaRemoveApp() {
-    val vm: MainViewModel = viewModel()
-    var showSettings by remember { mutableStateOf(false) }
+private fun ShaRemoveApp(viewModel: MainViewModel) {
+    var showSettings by rememberSaveable { mutableStateOf(false) }
 
     if (showSettings) {
-        SettingsScreen(viewModel = vm, onBack = { showSettings = false })
+        SettingsScreen(viewModel = viewModel, onBack = { showSettings = false })
     } else {
-        HomeScreen(viewModel = vm, onNavigateToSettings = { showSettings = true })
+        HomeScreen(viewModel = viewModel, onNavigateToSettings = { showSettings = true })
     }
 }

@@ -16,4 +16,19 @@ enum class IntentCategory(
         action      = "android.intent.action.VIEW",
         scheme      = "https",
     ),
+    SHARE_TEXT(
+        displayName = "Share: Text",
+        action      = "android.intent.action.SEND",
+        mimeType    = "text/plain",
+    ),
+    SHARE_IMAGE(
+        displayName = "Share: Images",
+        action      = "android.intent.action.SEND",
+        mimeType    = "image/*",
+    ),
+    SHARE_FILE(
+        displayName = "Share: Files",
+        action      = "android.intent.action.SEND",
+        mimeType    = "*/*",
+    ),
 }
