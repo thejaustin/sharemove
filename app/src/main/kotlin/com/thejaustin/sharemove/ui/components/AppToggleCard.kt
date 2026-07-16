@@ -114,7 +114,7 @@ fun AppToggleCard(
                         )
                         Spacer(Modifier.width(2.dp))
                         Text(
-                            text  = "Disable",
+                            text  = if (entry.isDisabled) "Disabled" else "Enabled",
                             style = MaterialTheme.typography.labelSmall,
                             color = if (entry.isDisabled)
                                 MaterialTheme.colorScheme.error
@@ -123,7 +123,7 @@ fun AppToggleCard(
                         )
                         Spacer(Modifier.width(4.dp))
                         Switch(
-                            checked         = entry.isDisabled,
+                            checked         = !entry.isDisabled,
                             onCheckedChange = { onToggleDisabled() },
                         )
                     }
