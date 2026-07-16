@@ -58,3 +58,19 @@ JDK 17 and Gradle 8.10.
 
 Single-module Kotlin app: Jetpack Compose + Material 3 (dynamic color), MVVM with
 `StateFlow`, DataStore preferences, Shizuku API 13. Min SDK 31, target 35.
+
+## Acknowledgements
+
+ShaRemove wouldn't exist without these projects:
+
+- **[Shizuku](https://shizuku.rikka.app)** and the
+  **[Shizuku-API](https://github.com/RikkaApps/Shizuku-API)** by
+  [RikkaApps](https://github.com/RikkaApps) — the privileged-access layer that makes
+  non-root hiding possible (Apache-2.0 / MIT)
+- **[Jetpack Compose, Material 3 & AndroidX](https://developer.android.com/jetpack/compose)**
+  by Google/AOSP — UI toolkit, design system, DataStore, lifecycle (Apache-2.0)
+- **[Kotlin & kotlinx.coroutines](https://kotlinlang.org)** by JetBrains (Apache-2.0)
+
+## License
+
+[GPL-3.0](LICENSE) — free software; forks and derivatives must remain open source.

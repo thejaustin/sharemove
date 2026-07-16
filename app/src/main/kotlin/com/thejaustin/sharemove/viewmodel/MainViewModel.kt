@@ -65,9 +65,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 combine(
                     prefsRepo.hiddenPackages(category),
                     prefsRepo.disabledPackages(category),
-                ) { hidden, disabled -> hidden to disabled }
-                    .map<Pair<Set<String>, Set<String>>, List<AppEntry>?> { (hidden, disabled) ->
-                        chooserRepo.queryApps(category, hidden, disabled)
+                    prefsRepo.hiddenComponents(category),
+                ) { hidden, disabled, hiddenComps -> Triple(hidden, disabled, hiddenComps) }
+                    .map<Triple<Set<String>, Set<String>, Set<String>>, List<AppEntry>?> { (hidden, disabled, hiddenComps) ->
+                        chooserRepo.queryApps(category, hidden, disabled, hiddenComps)
                     }
                     .onStart { emit(null) }
             }

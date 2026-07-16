@@ -2,6 +2,7 @@ package com.thejaustin.sharemove
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -60,6 +61,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun ShaRemoveApp(viewModel: MainViewModel) {
     var showSettings by rememberSaveable { mutableStateOf(false) }
+
+    BackHandler(enabled = showSettings) { showSettings = false }
 
     if (showSettings) {
         SettingsScreen(viewModel = viewModel, onBack = { showSettings = false })

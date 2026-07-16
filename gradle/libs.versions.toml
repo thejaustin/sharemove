@@ -3,13 +3,11 @@ agp                    = "8.7.3"
 kotlin                 = "2.1.0"
 compose-bom            = "2024.12.01"
 lifecycle              = "2.8.7"
-navigation             = "2.8.5"
 shizuku                = "13.1.5"
 datastore              = "1.1.1"
 activity               = "1.9.3"
 core-ktx               = "1.15.0"
 coroutines             = "1.8.1"
-kotlinx-serialization  = "1.7.3"
 
 [libraries]
 compose-bom              = { group = "androidx.compose",           name = "compose-bom",                   version.ref = "compose-bom" }
@@ -27,14 +25,11 @@ androidx-core-ktx        = { group = "androidx.core",               name = "core
 lifecycle-viewmodel      = { group = "androidx.lifecycle",          name = "lifecycle-viewmodel-compose",   version.ref = "lifecycle" }
 lifecycle-runtime        = { group = "androidx.lifecycle",          name = "lifecycle-runtime-compose",     version.ref = "lifecycle" }
 
-navigation-compose       = { group = "androidx.navigation",         name = "navigation-compose",            version.ref = "navigation" }
-
 shizuku-api              = { group = "dev.rikka.shizuku",           name = "api",                           version.ref = "shizuku" }
 shizuku-provider         = { group = "dev.rikka.shizuku",           name = "provider",                      version.ref = "shizuku" }
 
 datastore                = { group = "androidx.datastore",          name = "datastore-preferences",         version.ref = "datastore" }
 coroutines               = { group = "org.jetbrains.kotlinx",       name = "kotlinx-coroutines-android",    version.ref = "coroutines" }
-kotlinx-serialization-json = { group = "org.jetbrains.kotlinx",    name = "kotlinx-serialization-json",    version.ref = "kotlinx-serialization" }
 
 [plugins]
 android-application      = { id = "com.android.application",             version.ref = "agp" }
