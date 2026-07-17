@@ -3,8 +3,10 @@ package com.thejaustin.sharemove.data.repository
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import com.thejaustin.sharemove.data.model.AppEntry
 import com.thejaustin.sharemove.data.model.IntentCategory
 import com.thejaustin.sharemove.shizuku.RootHelper
@@ -45,11 +47,13 @@ class ChooserRepository(private val context: Context) {
 
         // MATCH_DISABLED_COMPONENTS keeps pm-disabled apps in the list so they
         // can be re-enabled from the UI after being hidden or disabled.
+        val flags = PackageManager.MATCH_ALL or PackageManager.MATCH_DISABLED_COMPONENTS
         @Suppress("DEPRECATION")
-        val resolved = pm.queryIntentActivities(
-            intent,
-            PackageManager.MATCH_ALL or PackageManager.MATCH_DISABLED_COMPONENTS,
-        )
+        val resolved = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            pm.queryIntentActivities(intent, PackageManager.ResolveInfoFlags.of(flags.toLong()))
+        } else {
+            pm.queryIntentActivities(intent, flags)
+        }
 
         val entries = resolved
             .filter { it.activityInfo.packageName != context.packageName }
@@ -110,7 +114,11 @@ class ChooserRepository(private val context: Context) {
     // ── System-truth state checks ────────────────────────────────────────────
 
     private fun isPackageSuspended(packageName: String): Boolean = try {
-        pm.isPackageSuspended(packageName)
+        // PackageManager.isPackageSuspended() only checks the calling package (self).
+        // To check another package we must read the FLAG_SUSPENDED bit from ApplicationInfo,
+        // which is readable without any special permission.
+        @Suppress("DEPRECATION")
+        (pm.getApplicationInfo(packageName, 0).flags and ApplicationInfo.FLAG_SUSPENDED) != 0
     } catch (_: Exception) {
         false
     }

@@ -11,6 +11,7 @@ import com.thejaustin.sharemove.data.repository.ChooserRepository
 import com.thejaustin.sharemove.data.repository.PreferencesRepository
 import com.thejaustin.sharemove.shizuku.RootHelper
 import com.thejaustin.sharemove.shizuku.ShizukuHelper
+import com.thejaustin.sharemove.util.SamsungUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
@@ -35,8 +36,12 @@ data class UiState(
     val shizukuPermission: Boolean = false,
     val rootAvailable: Boolean     = false,
     val hideMode: HideMode         = HideMode.SUSPEND,
+    /** True when running on Samsung One UI — suspend mode won't hide from share sheet. */
+    val isOneUi: Boolean           = SamsungUtil.isOneUi,
 ) {
     val canExecute: Boolean get() = rootAvailable || (shizukuAvailable && shizukuPermission)
+    /** True when the user has chosen Suspend but it won't work on this device. */
+    val suspendIneffective: Boolean get() = isOneUi && hideMode == HideMode.SUSPEND
 }
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {

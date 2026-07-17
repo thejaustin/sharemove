@@ -2,6 +2,22 @@
 
 Cross-session continuity notes. Newest entry first.
 
+## 2026-07-17 (Antigravity CLI) — Samsung S22 Ultra & One UI Optimization
+
+- **Samsung One UI Detection & Handling**:
+  - Created `SamsungUtil` utility to detect One UI devices at runtime.
+  - Set default hide mode to `COMPONENT` on Samsung One UI devices (since `pm suspend` does not hide apps from Samsung's custom share sheet).
+  - Added warnings to `HomeScreen` and `SettingsScreen` if the user selects `SUSPEND` on a Samsung device, guiding them to use `COMPONENT` instead.
+- **DeX & Orientation Support**:
+  - Removed `screenOrientation="portrait"` from the manifest to allow auto-rotation and correct rendering in Samsung DeX mode.
+- **Modernized & Fixed APIs**:
+  - Reverted `isPackageSuspended` back to the `ApplicationInfo.FLAG_SUSPENDED` flag check, as `PackageManager.isPackageSuspended(String)` requires the privileged `SUSPEND_APPS` permission when querying packages other than our own.
+  - Used non-deprecated API `queryIntentActivities` with `ResolveInfoFlags` on Android 13+ (API 33+).
+  - Improved `RootHelper` root status check by running `su -c id` to verify `uid=0` instead of just checking if `su` exists on `PATH`.
+- **UI & Theme Polish**:
+  - Set status bar color to transparent in `Theme.kt` to allow correct edge-to-edge drawing when the activity is configured as edge-to-edge.
+  - Sized app icons inside `AppToggleCard` in a density-aware fashion to avoid pixelation on high-DPI screens.
+
 ## 2026-07-16 (Antigravity CLI) — Enhanced categories & modernizations
 
 - **New intent categories**: Added tabs and queries for PDF Viewer, Email, Maps, Audio, and Video.

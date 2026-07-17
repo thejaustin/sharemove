@@ -113,9 +113,14 @@ fun SettingsScreen(
                     }
 
                     val modeText = when (state.hideMode) {
-                        HideMode.SUSPEND ->
-                            "Package suspend — the whole app is paused, data intact. " +
-                                "Its icon is greyed out in the launcher."
+                        HideMode.SUSPEND -> {
+                            var desc = "Package suspend — the whole app is paused, data intact. " +
+                                    "Its icon is greyed out in the launcher."
+                            if (state.isOneUi) {
+                                desc += "\n\n⚠️ Note: On Samsung One UI, this mode does not hide apps from the system share sheet. Use Component mode instead."
+                            }
+                            desc
+                        }
                         HideMode.COMPONENT ->
                             "Component-level — only the activity handling this intent is " +
                                 "disabled. Surgical, but can affect the app's launcher entry " +

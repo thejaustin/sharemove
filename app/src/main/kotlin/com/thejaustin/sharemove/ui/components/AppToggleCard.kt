@@ -43,8 +43,10 @@ fun AppToggleCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             entry.icon?.let { drawable ->
-                val iconBitmap = remember(drawable) {
-                    drawable.toBitmap(48, 48).asImageBitmap()
+                val density = androidx.compose.ui.platform.LocalDensity.current
+                val iconBitmap = remember(drawable, density) {
+                    val sizePx = (40 * density.density).toInt().coerceAtLeast(1)
+                    drawable.toBitmap(sizePx, sizePx).asImageBitmap()
                 }
                 Image(
                     bitmap = iconBitmap,

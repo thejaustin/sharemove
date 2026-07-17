@@ -35,7 +35,7 @@ class PreferencesRepository(private val context: Context) {
     val hideMode: Flow<HideMode> = context.dataStore.data.map { prefs ->
         prefs[hideModeKey]
             ?.let { stored -> HideMode.entries.firstOrNull { it.name == stored } }
-            ?: HideMode.SUSPEND
+            ?: if (com.thejaustin.sharemove.util.SamsungUtil.isOneUi) HideMode.COMPONENT else HideMode.SUSPEND
     }
 
     suspend fun setHideMode(mode: HideMode) {
