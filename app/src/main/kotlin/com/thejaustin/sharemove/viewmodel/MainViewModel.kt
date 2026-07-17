@@ -5,6 +5,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import android.app.admin.DevicePolicyManager
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import com.thejaustin.sharemove.data.model.AppEntry
 import com.thejaustin.sharemove.data.model.HideMode
 import com.thejaustin.sharemove.data.model.IntentCategory
@@ -42,6 +45,19 @@ sealed class UiEvent {
     ) : UiEvent()
 }
 
+/** Information about a default system application handler. */
+data class DefaultAppInfo(
+    val packageName: String,
+    val label: String,
+)
+
+/** State representing the current default app selections. */
+data class DefaultAppsState(
+    val browser: DefaultAppInfo? = null,
+    val launcher: DefaultAppInfo? = null,
+    val dialer: DefaultAppInfo? = null,
+)
+
 data class UiState(
     val apps: List<AppEntry>       = emptyList(),
     val searchQuery: String        = "",
@@ -68,6 +84,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private val chooserRepo = ChooserRepository(app)
     private val prefsRepo   = PreferencesRepository(app)
+
+    private val _defaultApps = MutableStateFlow(DefaultAppsState())
+    val defaultApps: StateFlow<DefaultAppsState> = _defaultApps.asStateFlow()
 
     private val _selectedCategory = MutableStateFlow(IntentCategory.APK_INSTALLER)
     val selectedCategory: StateFlow<IntentCategory> = _selectedCategory.asStateFlow()
@@ -123,6 +142,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         refreshCapabilities()
+        refreshDefaultApps()
     }
 
     fun refreshCapabilities() {
@@ -140,6 +160,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Re-query the app list, e.g. after returning to the foreground. */
     fun refreshApps() {
         _reloadApps.value += 1
+        refreshDefaultApps()
     }
 
     fun selectCategory(category: IntentCategory) {
@@ -160,6 +181,51 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun requestShizukuPermission() = ShizukuHelper.requestPermission(1001)
+
+    fun refreshDefaultApps() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val context = getApplication<Application>()
+            val pm = context.packageManager
+
+            // 1. Browser
+            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com"))
+            val browserResolve = pm.resolveActivity(browserIntent, PackageManager.MATCH_DEFAULT_ONLY)
+            val browserInfo = browserResolve?.activityInfo?.packageName?.let { pkg ->
+                val label = try {
+                    pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
+                } catch (_: Exception) {
+                    pkg
+                }
+                DefaultAppInfo(pkg, label)
+            }
+
+            // 2. Launcher
+            val homeIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+            val homeResolve = pm.resolveActivity(homeIntent, PackageManager.MATCH_DEFAULT_ONLY)
+            val homeInfo = homeResolve?.activityInfo?.packageName?.let { pkg ->
+                val label = try {
+                    pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
+                } catch (_: Exception) {
+                    pkg
+                }
+                DefaultAppInfo(pkg, label)
+            }
+
+            // 3. Dialer
+            val dialIntent = Intent(Intent.ACTION_DIAL)
+            val dialResolve = pm.resolveActivity(dialIntent, PackageManager.MATCH_DEFAULT_ONLY)
+            val dialInfo = dialResolve?.activityInfo?.packageName?.let { pkg ->
+                val label = try {
+                    pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
+                } catch (_: Exception) {
+                    pkg
+                }
+                DefaultAppInfo(pkg, label)
+            }
+
+            _defaultApps.value = DefaultAppsState(browserInfo, homeInfo, dialInfo)
+        }
+    }
 
     fun toggleHidden(entry: AppEntry) {
         viewModelScope.launch {

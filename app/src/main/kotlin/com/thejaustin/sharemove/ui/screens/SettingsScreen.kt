@@ -3,6 +3,7 @@ package com.thejaustin.sharemove.ui.screens
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.provider.Settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -39,6 +40,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val defaultApps by viewModel.defaultApps.collectAsStateWithLifecycle()
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
     val versionName = remember { appVersionName(context) }
@@ -222,6 +224,102 @@ fun SettingsScreen(
                             }
                         }) {
                             Text(if (homeUpInstalled) "Open Home Up / Good Lock" else "Get Good Lock from Galaxy Store")
+                        }
+                    }
+                }
+            }
+
+            Card {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Default system applications", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = "Query and modify default handlers for main system intent roles.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    // 1. Browser row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Default Browser", style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                text = defaultApps.browser?.let { "${it.label} (${it.packageName})" } ?: "None selected",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Button(onClick = {
+                            val intent = Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            try {
+                                context.startActivity(intent)
+                            } catch (_: Exception) {}
+                        }) {
+                            Text("Configure")
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                    // 2. Launcher row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Default Launcher", style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                text = defaultApps.launcher?.let { "${it.label} (${it.packageName})" } ?: "None selected",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Button(onClick = {
+                            val intent = Intent(Settings.ACTION_HOME_SETTINGS)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            try {
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                val fallback = Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                try {
+                                    context.startActivity(fallback)
+                                } catch (_: Exception) {}
+                            }
+                        }) {
+                            Text("Configure")
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                    // 3. Dialer row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Default Phone app", style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                text = defaultApps.dialer?.let { "${it.label} (${it.packageName})" } ?: "None selected",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Button(onClick = {
+                            val intent = Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            try {
+                                context.startActivity(intent)
+                            } catch (_: Exception) {}
+                        }) {
+                            Text("Configure")
                         }
                     }
                 }

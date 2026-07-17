@@ -2,6 +2,14 @@
 
 Cross-session continuity notes. Newest entry first.
 
+## 2026-07-17 (Antigravity CLI) — Default Apps Manager Integration
+
+- **Default System Applications Settings**:
+  - Implemented `DefaultAppsState` and `DefaultAppInfo` query flows inside `MainViewModel` to resolve the current system default handlers for key roles: Default Browser, Default Launcher, and Default Phone app.
+  - Added direct launching intents for `Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS` and `Settings.ACTION_HOME_SETTINGS` to open the system picker screens.
+  - Added a dedicated "Default system applications" card to `SettingsScreen` showing the active default app's display name and package name, with quick "Configure" shortcuts for each role.
+  - Updated manifest queries block in `AndroidManifest.xml` to include intent queries for `DIAL`, `MAIN/HOME`, and `INSERT` categories to ensure reliable default app resolution on Android 11+.
+
 ## 2026-07-17 (Antigravity CLI) — Bulk Toggle & List Animations
 
 - **Bulk Hide / Unhide**:
