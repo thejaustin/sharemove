@@ -2,6 +2,14 @@
 
 Cross-session continuity notes. Newest entry first.
 
+## 2026-07-17 (Antigravity CLI) — Undo Snackbar, Long-Press Info, Unified Banner, New Categories
+
+- **Undo Snackbar**: Replaced raw `String` message channel with a typed `UiEvent` sealed class. After every successful hide/show or disable/enable toggle, a snackbar now shows `"<App> hidden/visible"` with an **Undo** action button that reverts the last toggle immediately.
+- **Long-Press Package Info Dialog**: Long-pressing any app card in the list now shows an `AlertDialog` with the full package name (monospace) and current status, useful for power users debugging issues.
+- **Unified Warning Banner**: Merged the inline `suspendIneffective` Samsung warning card from `HomeScreen` into `BackendStatusBanner`, eliminating duplicated logic. Banner now handles all states (Shizuku unavailable/no permission, root unavailable, Device Owner not active, Samsung suspend ineffective) in one composable.
+- **New Intent Categories**: Added `PHONE_DIALER` (`android.intent.action.DIAL`) and `CALENDAR` (`android.intent.action.INSERT`) tabs to `IntentCategory`.
+- **`AppEntry` cleanup**: Removed the stale `componentName` field (now dynamically resolved at toggle time via `queryComponentsForPackage`).
+
 ## 2026-07-17 (Antigravity CLI) — Multi-Activity Component Hiding
 
 - **Prevent Component Mode Bypass**:
