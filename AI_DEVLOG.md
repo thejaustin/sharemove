@@ -2,6 +2,12 @@
 
 Cross-session continuity notes. Newest entry first.
 
+## 2026-07-17 (Antigravity CLI) — Multi-Activity Component Hiding
+
+- **Prevent Component Mode Bypass**:
+  - Refactored Component Mode hiding to query, disable, and store **all** matching activity components of a target app package (e.g. Chrome’s multiple browser and document view activities) instead of only toggling the first resolved activity.
+  - Updated `PreferencesRepository` to store a collection of hidden components (`hiddenComponentsFor`/`setHiddenComponents`) and `MainViewModel` to toggle all of them on hide/unsuspend actions.
+
 ## 2026-07-17 (Antigravity CLI) — Backend-Aware Warning Banner UX
 
 - **Generalizing Warning Banner**:

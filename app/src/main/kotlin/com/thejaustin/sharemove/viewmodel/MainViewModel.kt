@@ -157,20 +157,27 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val target   = !entry.isHidden
 
             val result = if (target) {
-                if (state.hideMode == HideMode.COMPONENT && entry.componentName != null) {
-                    chooserRepo.setComponentHidden(entry.componentName, true, backend)
-                        .onSuccess { prefsRepo.setHiddenComponent(category, entry.componentName, true) }
+                if (state.hideMode == HideMode.COMPONENT) {
+                    val components = chooserRepo.queryComponentsForPackage(entry.packageName, category)
+                    chooserRepo.setComponentHidden(components, true, backend)
+                        .onSuccess { prefsRepo.setHiddenComponents(category, components, true) }
                 } else {
                     chooserRepo.setPackageHidden(entry.packageName, true, backend)
                 }
             } else {
                 // Restore the same way the app was hidden, regardless of the current mode.
-                val storedComponent = prefsRepo.hiddenComponentFor(category, entry.packageName)
-                if (storedComponent != null) {
-                    chooserRepo.setComponentHidden(storedComponent, false, backend)
-                        .onSuccess { prefsRepo.setHiddenComponent(category, storedComponent, false) }
+                val storedComponents = prefsRepo.hiddenComponentsFor(category, entry.packageName)
+                if (storedComponents.isNotEmpty()) {
+                    chooserRepo.setComponentHidden(storedComponents, false, backend)
+                        .onSuccess { prefsRepo.setHiddenComponents(category, storedComponents, false) }
                 } else {
-                    chooserRepo.setPackageHidden(entry.packageName, false, backend)
+                    // Fallback to query dynamically if stored list is empty
+                    val components = chooserRepo.queryComponentsForPackage(entry.packageName, category)
+                    if (components.isNotEmpty()) {
+                        chooserRepo.setComponentHidden(components, false, backend)
+                    } else {
+                        chooserRepo.setPackageHidden(entry.packageName, false, backend)
+                    }
                 }
             }
 

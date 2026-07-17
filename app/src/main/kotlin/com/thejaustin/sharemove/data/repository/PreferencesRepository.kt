@@ -72,16 +72,16 @@ class PreferencesRepository(private val context: Context) {
     fun hiddenComponents(category: IntentCategory): Flow<Set<String>> =
         context.dataStore.data.map { it[hiddenComponentsKey(category)] ?: emptySet() }
 
-    /** Component recorded when [packageName] was hidden in COMPONENT mode, if any. */
-    suspend fun hiddenComponentFor(category: IntentCategory, packageName: String): String? =
+    /** Components recorded when [packageName] was hidden in COMPONENT mode, if any. */
+    suspend fun hiddenComponentsFor(category: IntentCategory, packageName: String): Set<String> =
         context.dataStore.data.first()[hiddenComponentsKey(category)]
-            ?.firstOrNull { it.substringBefore('/') == packageName }
+            ?.filter { it.substringBefore('/') == packageName }?.toSet() ?: emptySet()
 
-    suspend fun setHiddenComponent(category: IntentCategory, componentName: String, hidden: Boolean) {
+    suspend fun setHiddenComponents(category: IntentCategory, componentNames: Collection<String>, hidden: Boolean) {
         context.dataStore.edit { prefs ->
             val key = hiddenComponentsKey(category)
             val current = prefs[key] ?: emptySet()
-            prefs[key] = if (hidden) current + componentName else current - componentName
+            prefs[key] = if (hidden) current + componentNames else current - componentNames
         }
     }
 }

@@ -98,6 +98,26 @@ class ChooserRepository(private val context: Context) {
         (entries + ghosts).sortedBy { it.label.lowercase() }
     }
 
+    /**
+     * Query all component activity names in [packageName] that match [category].
+     */
+    fun queryComponentsForPackage(packageName: String, category: IntentCategory): Set<String> {
+        val intent = Intent(category.action).apply {
+            category.mimeType?.let { type = it }
+            category.scheme?.let { data = Uri.parse("$it://example.com") }
+        }
+        val flags = PackageManager.MATCH_ALL or PackageManager.MATCH_DISABLED_COMPONENTS
+        @Suppress("DEPRECATION")
+        val resolved = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            pm.queryIntentActivities(intent, PackageManager.ResolveInfoFlags.of(flags.toLong()))
+        } else {
+            pm.queryIntentActivities(intent, flags)
+        }
+        return resolved
+            .filter { it.activityInfo.packageName == packageName }
+            .mapTo(mutableSetOf()) { "${it.activityInfo.packageName}/${it.activityInfo.name}" }
+    }
+
     private fun installedEntryOrNull(
         packageName: String,
         category: IntentCategory,
@@ -182,7 +202,17 @@ class ChooserRepository(private val context: Context) {
         }
     }
 
-    suspend fun setComponentHidden(componentName: String, hidden: Boolean, backend: Backend): Result<Unit> = when (backend) {
+    suspend fun setComponentHidden(componentNames: Set<String>, hidden: Boolean, backend: Backend): Result<Unit> {
+        if (componentNames.isEmpty()) return Result.success(Unit)
+        var lastResult: Result<Unit> = Result.success(Unit)
+        for (componentName in componentNames) {
+            val res = setSingleComponentHidden(componentName, hidden, backend)
+            if (res.isFailure) lastResult = res
+        }
+        return lastResult
+    }
+
+    private suspend fun setSingleComponentHidden(componentName: String, hidden: Boolean, backend: Backend): Result<Unit> = when (backend) {
         Backend.DEVICE_OWNER -> Result.failure(Exception("Component-level hiding is not supported in Device Owner mode"))
         Backend.SHIZUKU_PLUS -> {
             val cn = ComponentName.unflattenFromString(componentName)
