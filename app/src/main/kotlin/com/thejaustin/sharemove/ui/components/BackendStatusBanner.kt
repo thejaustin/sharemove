@@ -8,7 +8,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.thejaustin.sharemove.data.model.HideMode
 import com.thejaustin.sharemove.data.repository.Backend
 
 @Composable
