@@ -4,7 +4,6 @@ import android.graphics.drawable.Drawable
 
 data class AppEntry(
     val packageName: String,
-    val componentName: String?,   // non-null only for root component-level control
     val label: String,
     val icon: Drawable?,
     val category: IntentCategory,

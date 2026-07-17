@@ -77,7 +77,6 @@ class ChooserRepository(private val context: Context) {
                 val storedComp = hiddenComponents.firstOrNull { it.substringBefore('/') == pkg }
                 AppEntry(
                     packageName   = pkg,
-                    componentName = comp,
                     label         = ri.loadLabel(pm).toString(),
                     icon          = ri.loadIcon(pm),
                     category      = category,
@@ -129,7 +128,6 @@ class ChooserRepository(private val context: Context) {
         val storedComp = hiddenComponents.firstOrNull { it.substringBefore('/') == packageName }
         AppEntry(
             packageName   = packageName,
-            componentName = null,
             label         = info.loadLabel(pm).toString(),
             icon          = info.loadIcon(pm),
             category      = category,

@@ -30,6 +30,18 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+/** Events emitted from the ViewModel to the UI layer. */
+sealed class UiEvent {
+    /** A simple informational message (errors, etc.). */
+    data class Message(val text: String) : UiEvent()
+    /** Fired after a successful hide/show toggle — carries an undo action. */
+    data class ToggleResult(
+        val label: String,
+        val hidden: Boolean,
+        val onUndo: () -> Unit,
+    ) : UiEvent()
+}
+
 data class UiState(
     val apps: List<AppEntry>       = emptyList(),
     val searchQuery: String        = "",
@@ -106,8 +118,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UiState())
 
-    private val _messages = Channel<String>(Channel.BUFFERED)
-    val messages: Flow<String> = _messages.receiveAsFlow()
+    private val _events = Channel<UiEvent>(Channel.BUFFERED)
+    val events: Flow<UiEvent> = _events.receiveAsFlow()
 
     init {
         refreshCapabilities()
@@ -182,8 +194,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
 
             result.fold(
-                onSuccess = { prefsRepo.setHidden(category, entry.packageName, target) },
-                onFailure = { _messages.trySend(it.message ?: "Command failed") },
+                onSuccess = {
+                    prefsRepo.setHidden(category, entry.packageName, target)
+                    _events.trySend(
+                        UiEvent.ToggleResult(
+                            label  = entry.label,
+                            hidden = target,
+                            onUndo = { toggleHidden(entry.copy(isHidden = target)) },
+                        )
+                    )
+                },
+                onFailure = { _events.trySend(UiEvent.Message(it.message ?: "Command failed")) },
             )
         }
     }
@@ -195,8 +216,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val target  = !entry.isDisabled
 
             chooserRepo.setPackageDisabled(entry.packageName, target, backend).fold(
-                onSuccess = { prefsRepo.setDisabled(_selectedCategory.value, entry.packageName, target) },
-                onFailure = { _messages.trySend(it.message ?: "Command failed") },
+                onSuccess = {
+                    prefsRepo.setDisabled(_selectedCategory.value, entry.packageName, target)
+                    _events.trySend(
+                        UiEvent.ToggleResult(
+                            label  = entry.label,
+                            hidden = target,
+                            onUndo = { toggleDisabled(entry.copy(isDisabled = target)) },
+                        )
+                    )
+                },
+                onFailure = { _events.trySend(UiEvent.Message(it.message ?: "Command failed")) },
             )
         }
     }

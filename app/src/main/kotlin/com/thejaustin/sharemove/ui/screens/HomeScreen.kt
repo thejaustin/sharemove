@@ -9,7 +9,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,6 +19,7 @@ import com.thejaustin.sharemove.data.model.IntentCategory
 import com.thejaustin.sharemove.ui.components.AppToggleCard
 import com.thejaustin.sharemove.ui.components.BackendStatusBanner
 import com.thejaustin.sharemove.viewmodel.MainViewModel
+import com.thejaustin.sharemove.viewmodel.UiEvent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,8 +32,18 @@ fun HomeScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
-        viewModel.messages.collect { msg ->
-            snackbarHostState.showSnackbar(msg)
+        viewModel.events.collect { event ->
+            when (event) {
+                is UiEvent.ToggleResult -> {
+                    val action = snackbarHostState.showSnackbar(
+                        message     = if (event.hidden) "${event.label} hidden" else "${event.label} visible",
+                        actionLabel = "Undo",
+                        duration    = SnackbarDuration.Short,
+                    )
+                    if (action == SnackbarResult.ActionPerformed) event.onUndo()
+                }
+                is UiEvent.Message -> snackbarHostState.showSnackbar(event.text)
+            }
         }
     }
 
@@ -64,42 +74,10 @@ fun HomeScreen(
                 shizukuPermission          = state.shizukuPermission,
                 rootAvailable              = state.rootAvailable,
                 deviceOwnerActive          = state.deviceOwnerActive,
+                suspendIneffective         = state.suspendIneffective,
                 onRequestShizukuPermission = viewModel::requestShizukuPermission,
+                onGoToSettings             = onNavigateToSettings,
             )
-
-            if (state.suspendIneffective) {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onErrorContainer,
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                text = "On Samsung One UI, Suspend mode does not hide apps from the share sheet. Switch to Component mode in Settings.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            TextButton(onClick = onNavigateToSettings) {
-                                Text("Go to Settings")
-                            }
-                        }
-                    }
-                }
-            }
 
             // Category tabs
             ScrollableTabRow(

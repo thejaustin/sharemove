@@ -56,4 +56,13 @@ enum class IntentCategory(
         action      = "android.intent.action.VIEW",
         mimeType    = "video/*",
     ),
+    PHONE_DIALER(
+        displayName = "Phone / Dialer",
+        action      = "android.intent.action.DIAL",
+    ),
+    CALENDAR(
+        displayName = "Calendar",
+        action      = "android.intent.action.INSERT",
+        scheme      = "content",
+    ),
 }
