@@ -2,6 +2,16 @@
 
 Cross-session continuity notes. Newest entry first.
 
+## 2026-07-17 (Antigravity CLI) — Multiple Execution Backends
+
+- **Multiple Backend Architecture**:
+  - Implemented `ShizukuPlusHelper` providing a direct IPC Binder wrapper (`SHIZUKU_PLUS`) utilizing `ShizukuBinderWrapper` for zero-latency operations, while retaining the original `SHIZUKU` (OG Shell) as a selectable fallback.
+  - Added support for the `DEVICE_OWNER` backend using native `DevicePolicyManager` enterprise APIs (`setApplicationHidden`), offering a robust native alternative without requiring root or external daemon services.
+  - Created `AdminReceiver` class, registered it in `AndroidManifest.xml`, and added `device_admin.xml` configurations to support Device Owner activation.
+  - Added the `dadb` dependency to the project’s Gradle dependencies configuration.
+  - Expanded Settings UI with an "Execution backend" card displaying status indicators (Active/Unavailable) and radio buttons for user selection.
+  - Configured capability checks dynamically so that App Toggle action checks (`canExecute`) correctly reflect the requirements of the selected backend.
+
 ## 2026-07-17 (Antigravity CLI) — Samsung S22 Ultra & One UI Optimization
 
 - **Samsung One UI Detection & Handling**:

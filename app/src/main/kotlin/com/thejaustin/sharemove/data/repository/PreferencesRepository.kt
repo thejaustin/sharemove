@@ -25,6 +25,7 @@ class PreferencesRepository(private val context: Context) {
         stringSetPreferencesKey("hidden_components_${category.name}")
 
     private val hideModeKey = stringPreferencesKey("hide_mode")
+    private val backendKey = stringPreferencesKey("backend")
 
     fun hiddenPackages(category: IntentCategory): Flow<Set<String>> =
         context.dataStore.data.map { it[hiddenKey(category)] ?: emptySet() }
@@ -40,6 +41,16 @@ class PreferencesRepository(private val context: Context) {
 
     suspend fun setHideMode(mode: HideMode) {
         context.dataStore.edit { it[hideModeKey] = mode.name }
+    }
+
+    val backend: Flow<Backend> = context.dataStore.data.map { prefs ->
+        prefs[backendKey]
+            ?.let { stored -> Backend.entries.firstOrNull { it.name == stored } }
+            ?: Backend.SHIZUKU_PLUS
+    }
+
+    suspend fun setBackend(backend: Backend) {
+        context.dataStore.edit { it[backendKey] = backend.name }
     }
 
     suspend fun setHidden(category: IntentCategory, packageName: String, hidden: Boolean) {

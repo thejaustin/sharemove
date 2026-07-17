@@ -3,6 +3,8 @@ package com.thejaustin.sharemove.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import android.app.admin.DevicePolicyManager
+import android.content.Context
 import com.thejaustin.sharemove.data.model.AppEntry
 import com.thejaustin.sharemove.data.model.HideMode
 import com.thejaustin.sharemove.data.model.IntentCategory
@@ -35,13 +37,19 @@ data class UiState(
     val shizukuAvailable: Boolean  = false,
     val shizukuPermission: Boolean = false,
     val rootAvailable: Boolean     = false,
+    val deviceOwnerActive: Boolean = false,
     val hideMode: HideMode         = HideMode.SUSPEND,
+    val selectedBackend: Backend   = Backend.SHIZUKU_PLUS,
     /** True when running on Samsung One UI — suspend mode won't hide from share sheet. */
     val isOneUi: Boolean           = SamsungUtil.isOneUi,
 ) {
-    val canExecute: Boolean get() = rootAvailable || (shizukuAvailable && shizukuPermission)
+    val canExecute: Boolean get() = when (selectedBackend) {
+        Backend.SHIZUKU, Backend.SHIZUKU_PLUS -> shizukuAvailable && shizukuPermission
+        Backend.ROOT -> rootAvailable
+        Backend.DEVICE_OWNER -> deviceOwnerActive
+    }
     /** True when the user has chosen Suspend but it won't work on this device. */
-    val suspendIneffective: Boolean get() = isOneUi && hideMode == HideMode.SUSPEND
+    val suspendIneffective: Boolean get() = isOneUi && hideMode == HideMode.SUSPEND && selectedBackend != Backend.DEVICE_OWNER
 }
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
@@ -60,6 +68,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val shizukuAvailable: Boolean  = false,
         val shizukuPermission: Boolean = false,
         val rootAvailable: Boolean     = false,
+        val deviceOwnerActive: Boolean = false,
     )
 
     /** null = loading (query in flight for the current category). */
@@ -79,7 +88,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
 
     val uiState: StateFlow<UiState> =
-        combine(apps, _searchQuery, _capabilities, prefsRepo.hideMode) { apps, query, caps, hideMode ->
+        combine(apps, _searchQuery, _capabilities, prefsRepo.hideMode, prefsRepo.backend) { apps, query, caps, hideMode, backend ->
             UiState(
                 apps = (apps ?: emptyList()).filter { entry ->
                     query.isBlank() ||
@@ -91,7 +100,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 shizukuAvailable  = caps.shizukuAvailable,
                 shizukuPermission = caps.shizukuPermission,
                 rootAvailable     = caps.rootAvailable,
+                deviceOwnerActive = caps.deviceOwnerActive,
                 hideMode          = hideMode,
+                selectedBackend   = backend,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UiState())
 
@@ -104,10 +115,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun refreshCapabilities() {
         viewModelScope.launch(Dispatchers.IO) {
+            val dpm = getApplication<Application>().getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
             _capabilities.value = Capabilities(
                 shizukuAvailable  = ShizukuHelper.isAvailable,
                 shizukuPermission = ShizukuHelper.hasPermission,
                 rootAvailable     = RootHelper.checkAvailable(),
+                deviceOwnerActive = dpm.isDeviceOwnerApp(getApplication<Application>().packageName),
             )
         }
     }
@@ -130,13 +143,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { prefsRepo.setHideMode(mode) }
     }
 
+    fun setBackend(backend: Backend) {
+        viewModelScope.launch { prefsRepo.setBackend(backend) }
+    }
+
     fun requestShizukuPermission() = ShizukuHelper.requestPermission(1001)
 
     fun toggleHidden(entry: AppEntry) {
         viewModelScope.launch {
             val state    = uiState.value
             val category = _selectedCategory.value
-            val backend  = if (state.rootAvailable) Backend.ROOT else Backend.SHIZUKU
+            val backend  = state.selectedBackend
             val target   = !entry.isHidden
 
             val result = if (target) {
@@ -167,7 +184,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun toggleDisabled(entry: AppEntry) {
         viewModelScope.launch {
             val state   = uiState.value
-            val backend = if (state.rootAvailable) Backend.ROOT else Backend.SHIZUKU
+            val backend = state.selectedBackend
             val target  = !entry.isDisabled
 
             chooserRepo.setPackageDisabled(entry.packageName, target, backend).fold(

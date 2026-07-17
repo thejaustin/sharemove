@@ -1,5 +1,6 @@
 package com.thejaustin.sharemove.data.repository
 
+import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -9,13 +10,20 @@ import android.net.Uri
 import android.os.Build
 import com.thejaustin.sharemove.data.model.AppEntry
 import com.thejaustin.sharemove.data.model.IntentCategory
+import com.thejaustin.sharemove.receiver.AdminReceiver
 import com.thejaustin.sharemove.shizuku.RootHelper
 import com.thejaustin.sharemove.shizuku.ShizukuHelper
+import com.thejaustin.sharemove.shizuku.ShizukuPlusHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/** Which privileged backend executes pm commands. */
-enum class Backend { SHIZUKU, ROOT }
+/** Which privileged backend executes app-hiding commands. */
+enum class Backend {
+    SHIZUKU,        // OG Shizuku (spawn shell process)
+    SHIZUKU_PLUS,   // Shizuku+ (direct IPC Binder wrapper)
+    ROOT,           // Root access (su shell process)
+    DEVICE_OWNER,   // Device Policy Manager (Enterprise API)
+}
 
 private val DISABLED_STATES = setOf(
     PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
@@ -26,6 +34,8 @@ private val DISABLED_STATES = setOf(
 class ChooserRepository(private val context: Context) {
 
     private val pm: PackageManager get() = context.packageManager
+    private val dpm by lazy { context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager }
+    private val adminComponent by lazy { ComponentName(context, AdminReceiver::class.java) }
 
     /**
      * Enumerate all apps that handle [category].
@@ -70,7 +80,7 @@ class ChooserRepository(private val context: Context) {
                     label         = ri.loadLabel(pm).toString(),
                     icon          = ri.loadIcon(pm),
                     category      = category,
-                    isHidden      = isPackageSuspended(pkg) || isComponentDisabled(storedComp ?: comp),
+                    isHidden      = isPackageSuspended(pkg) || isComponentDisabled(storedComp ?: comp) || isAppHiddenByDeviceOwner(pkg),
                     isDisabled    = isPackageDisabled(pkg),
                 )
             }
@@ -104,7 +114,8 @@ class ChooserRepository(private val context: Context) {
             category      = category,
             isHidden      = isPackageSuspended(packageName) ||
                 (storedComp != null && isComponentDisabled(storedComp)) ||
-                packageName in hiddenPackages,
+                packageName in hiddenPackages ||
+                isAppHiddenByDeviceOwner(packageName),
             isDisabled    = isPackageDisabled(packageName),
         )
     } catch (_: PackageManager.NameNotFoundException) {
@@ -136,32 +147,58 @@ class ChooserRepository(private val context: Context) {
         false
     }
 
+    private fun isAppHiddenByDeviceOwner(packageName: String): Boolean = try {
+        dpm.isDeviceOwnerApp(context.packageName) && dpm.isApplicationHidden(adminComponent, packageName)
+    } catch (_: Exception) {
+        false
+    }
+
     // ── Privileged pm commands ───────────────────────────────────────────────
 
-    suspend fun setPackageHidden(packageName: String, hidden: Boolean, backend: Backend): Result<Unit> =
-        run(
+    suspend fun setPackageHidden(packageName: String, hidden: Boolean, backend: Backend): Result<Unit> = when (backend) {
+        Backend.DEVICE_OWNER -> runCatching {
+            dpm.setApplicationHidden(adminComponent, packageName, hidden)
+        }
+        Backend.SHIZUKU_PLUS -> ShizukuPlusHelper.setPackageSuspended(packageName, hidden, context.packageName)
+        else -> run(
             if (hidden) "pm suspend --user 0 $packageName"
             else        "pm unsuspend --user 0 $packageName",
-            backend,
+            backend
         )
+    }
 
-    suspend fun setComponentHidden(componentName: String, hidden: Boolean, backend: Backend): Result<Unit> =
-        run(
+    suspend fun setComponentHidden(componentName: String, hidden: Boolean, backend: Backend): Result<Unit> = when (backend) {
+        Backend.DEVICE_OWNER -> Result.failure(Exception("Component-level hiding is not supported in Device Owner mode"))
+        Backend.SHIZUKU_PLUS -> {
+            val cn = ComponentName.unflattenFromString(componentName)
+                ?: return Result.failure(Exception("Invalid component name: $componentName"))
+            val state = if (hidden) PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER else PackageManager.COMPONENT_ENABLED_STATE_DEFAULT
+            ShizukuPlusHelper.setComponentEnabledSetting(cn, state, PackageManager.DONT_KILL_APP)
+        }
+        else -> run(
             // Single quotes: component names may contain $ (inner-class activities)
             if (hidden) "pm disable-user --user 0 '$componentName'"
             else        "pm enable --user 0 '$componentName'",
-            backend,
+            backend
         )
+    }
 
-    suspend fun setPackageDisabled(packageName: String, disabled: Boolean, backend: Backend): Result<Unit> =
-        run(
+    suspend fun setPackageDisabled(packageName: String, disabled: Boolean, backend: Backend): Result<Unit> = when (backend) {
+        Backend.DEVICE_OWNER -> Result.failure(Exception("Full app disabling is not supported in Device Owner mode"))
+        Backend.SHIZUKU_PLUS -> {
+            val state = if (disabled) PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER else PackageManager.COMPONENT_ENABLED_STATE_DEFAULT
+            ShizukuPlusHelper.setApplicationEnabledSetting(packageName, state, PackageManager.DONT_KILL_APP, callingPackage = context.packageName)
+        }
+        else -> run(
             if (disabled) "pm disable-user --user 0 $packageName"
             else          "pm enable --user 0 $packageName",
-            backend,
+            backend
         )
+    }
 
     private suspend fun run(command: String, backend: Backend): Result<Unit> = when (backend) {
         Backend.ROOT    -> RootHelper.runCommand(command)
         Backend.SHIZUKU -> ShizukuHelper.runCommand(command)
+        else            -> Result.failure(Exception("Backend $backend cannot execute shell commands"))
     }.map { }
 }

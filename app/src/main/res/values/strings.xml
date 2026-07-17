@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">ShaRemove</string>
+    <string name="device_admin_description">Required for Device Owner mode to hide apps natively.</string>
 </resources>

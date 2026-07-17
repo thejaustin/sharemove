@@ -61,6 +61,7 @@ dependencies {
 
     implementation(libs.datastore)
     implementation(libs.coroutines)
+    implementation(libs.dadb)
 
     debugImplementation(libs.compose.ui.tooling)
 }

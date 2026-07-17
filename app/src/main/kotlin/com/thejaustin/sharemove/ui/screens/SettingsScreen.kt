@@ -9,12 +9,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.thejaustin.sharemove.data.model.HideMode
+import com.thejaustin.sharemove.data.repository.Backend
 import com.thejaustin.sharemove.viewmodel.MainViewModel
 
 private const val REPO_URL = "https://github.com/thejaustin/sharemove"
@@ -131,6 +133,50 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+            }
+
+            Card {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Execution backend", style = MaterialTheme.typography.titleMedium)
+
+                    Backend.entries.forEach { backend ->
+                        val isSelected = state.selectedBackend == backend
+                        val isAvailable = when (backend) {
+                            Backend.SHIZUKU, Backend.SHIZUKU_PLUS -> state.shizukuAvailable && state.shizukuPermission
+                            Backend.ROOT -> state.rootAvailable
+                            Backend.DEVICE_OWNER -> state.deviceOwnerActive
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.setBackend(backend) }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = isSelected,
+                                onClick = { viewModel.setBackend(backend) }
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Column {
+                                val title = when (backend) {
+                                    Backend.SHIZUKU_PLUS -> "Shizuku+ (Direct Binder wrapper)"
+                                    Backend.SHIZUKU -> "Shizuku (OG Shell commands)"
+                                    Backend.ROOT -> "Root access (su command)"
+                                    Backend.DEVICE_OWNER -> "Device Owner (Enterprise admin API)"
+                                }
+                                val statusText = if (isAvailable) "Active" else "Unavailable (needs setup)"
+                                Text(title, style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    statusText,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (isAvailable) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
