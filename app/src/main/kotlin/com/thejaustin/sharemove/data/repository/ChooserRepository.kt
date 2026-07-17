@@ -14,6 +14,7 @@ import com.thejaustin.sharemove.receiver.AdminReceiver
 import com.thejaustin.sharemove.shizuku.RootHelper
 import com.thejaustin.sharemove.shizuku.ShizukuHelper
 import com.thejaustin.sharemove.shizuku.ShizukuPlusHelper
+import com.thejaustin.sharemove.util.MultiUserUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -159,12 +160,26 @@ class ChooserRepository(private val context: Context) {
         Backend.DEVICE_OWNER -> runCatching {
             dpm.setApplicationHidden(adminComponent, packageName, hidden)
         }
-        Backend.SHIZUKU_PLUS -> ShizukuPlusHelper.setPackageSuspended(packageName, hidden, context.packageName)
-        else -> run(
-            if (hidden) "pm suspend --user 0 $packageName"
-            else        "pm unsuspend --user 0 $packageName",
-            backend
-        )
+        Backend.SHIZUKU_PLUS -> {
+            var lastResult: Result<Unit> = Result.success(Unit)
+            for (userId in MultiUserUtil.getUserIds(context)) {
+                val res = ShizukuPlusHelper.setPackageSuspended(packageName, hidden, context.packageName, userId)
+                if (res.isFailure) lastResult = res
+            }
+            lastResult
+        }
+        else -> {
+            var lastResult: Result<Unit> = Result.success(Unit)
+            for (userId in MultiUserUtil.getUserIds(context)) {
+                val res = run(
+                    if (hidden) "pm suspend --user $userId $packageName"
+                    else        "pm unsuspend --user $userId $packageName",
+                    backend
+                )
+                if (res.isFailure) lastResult = res
+            }
+            lastResult
+        }
     }
 
     suspend fun setComponentHidden(componentName: String, hidden: Boolean, backend: Backend): Result<Unit> = when (backend) {
@@ -173,27 +188,51 @@ class ChooserRepository(private val context: Context) {
             val cn = ComponentName.unflattenFromString(componentName)
                 ?: return Result.failure(Exception("Invalid component name: $componentName"))
             val state = if (hidden) PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER else PackageManager.COMPONENT_ENABLED_STATE_DEFAULT
-            ShizukuPlusHelper.setComponentEnabledSetting(cn, state, PackageManager.DONT_KILL_APP)
+            var lastResult: Result<Unit> = Result.success(Unit)
+            for (userId in MultiUserUtil.getUserIds(context)) {
+                val res = ShizukuPlusHelper.setComponentEnabledSetting(cn, state, PackageManager.DONT_KILL_APP, userId)
+                if (res.isFailure) lastResult = res
+            }
+            lastResult
         }
-        else -> run(
-            // Single quotes: component names may contain $ (inner-class activities)
-            if (hidden) "pm disable-user --user 0 '$componentName'"
-            else        "pm enable --user 0 '$componentName'",
-            backend
-        )
+        else -> {
+            var lastResult: Result<Unit> = Result.success(Unit)
+            for (userId in MultiUserUtil.getUserIds(context)) {
+                val res = run(
+                    // Single quotes: component names may contain $ (inner-class activities)
+                    if (hidden) "pm disable-user --user $userId '$componentName'"
+                    else        "pm enable --user $userId '$componentName'",
+                    backend
+                )
+                if (res.isFailure) lastResult = res
+            }
+            lastResult
+        }
     }
 
     suspend fun setPackageDisabled(packageName: String, disabled: Boolean, backend: Backend): Result<Unit> = when (backend) {
         Backend.DEVICE_OWNER -> Result.failure(Exception("Full app disabling is not supported in Device Owner mode"))
         Backend.SHIZUKU_PLUS -> {
             val state = if (disabled) PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER else PackageManager.COMPONENT_ENABLED_STATE_DEFAULT
-            ShizukuPlusHelper.setApplicationEnabledSetting(packageName, state, PackageManager.DONT_KILL_APP, callingPackage = context.packageName)
+            var lastResult: Result<Unit> = Result.success(Unit)
+            for (userId in MultiUserUtil.getUserIds(context)) {
+                val res = ShizukuPlusHelper.setApplicationEnabledSetting(packageName, state, PackageManager.DONT_KILL_APP, userId, callingPackage = context.packageName)
+                if (res.isFailure) lastResult = res
+            }
+            lastResult
         }
-        else -> run(
-            if (disabled) "pm disable-user --user 0 $packageName"
-            else          "pm enable --user 0 $packageName",
-            backend
-        )
+        else -> {
+            var lastResult: Result<Unit> = Result.success(Unit)
+            for (userId in MultiUserUtil.getUserIds(context)) {
+                val res = run(
+                    if (disabled) "pm disable-user --user $userId $packageName"
+                    else          "pm enable --user $userId $packageName",
+                    backend
+                )
+                if (res.isFailure) lastResult = res
+            }
+            lastResult
+        }
     }
 
     private suspend fun run(command: String, backend: Backend): Result<Unit> = when (backend) {

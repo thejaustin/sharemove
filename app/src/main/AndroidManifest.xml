@@ -5,6 +5,8 @@
 
     <!-- Required to enumerate other apps' intent filters -->
     <queries>
+        <package android:name="com.samsung.android.app.homestar" />
+        <package android:name="com.samsung.android.goodlock" />
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:mimeType="application/vnd.android.package-archive" />

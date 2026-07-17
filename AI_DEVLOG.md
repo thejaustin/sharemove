@@ -2,6 +2,16 @@
 
 Cross-session continuity notes. Newest entry first.
 
+## 2026-07-17 (Antigravity CLI) — Samsung Multi-Profile & Good Lock Integration
+
+- **Samsung Multi-User / Secure Folder Support**:
+  - Implemented `MultiUserUtil` to dynamically retrieve all active user profile IDs (handling Samsung Secure Folder user, parallel profiles, and Work Profiles via `UserManager`).
+  - Updated all command execution backends (`setPackageHidden`, `setComponentHidden`, `setPackageDisabled` in Shizuku+, OG Shizuku, and Root) to loop over and apply changes to all active user profile IDs automatically, rather than hardcoding User 0.
+- **Good Lock / Home Up Launcher**:
+  - Added a dedicated card to `SettingsScreen` for Samsung One UI users recommending Samsung's native customization tools (Good Lock / Home Up module) to customize system-level options (like Direct Share contacts).
+  - Added direct launching intent to open Good Lock / Home Up or open the Galaxy Store app detail page if not installed.
+  - Added package queries to the manifest queries block to support checking if Home Up or Good Lock is installed on Android 11+.
+
 ## 2026-07-17 (Antigravity CLI) — Multiple Execution Backends
 
 - **Multiple Backend Architecture**:

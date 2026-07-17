@@ -1,6 +1,8 @@
 package com.thejaustin.sharemove.ui.screens
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -175,6 +177,51 @@ fun SettingsScreen(
                                     color = if (isAvailable) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                                 )
                             }
+                        }
+                    }
+                }
+            }
+
+            if (state.isOneUi) {
+                val homeUpInstalled = remember {
+                    try {
+                        context.packageManager.getPackageInfo("com.samsung.android.app.homestar", 0)
+                        true
+                    } catch (_: Exception) {
+                        try {
+                            context.packageManager.getPackageInfo("com.samsung.android.goodlock", 0)
+                            true
+                        } catch (_: Exception) {
+                            false
+                        }
+                    }
+                }
+
+                Card {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Samsung share sheet options", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "One UI's share sheet has native customization options via the official Home Up module. You can use it to disable Direct Share (contacts) and clean up other Samsung-specific share targets.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Button(onClick = {
+                            val intent = context.packageManager.getLaunchIntentForPackage("com.samsung.android.app.homestar")
+                                ?: context.packageManager.getLaunchIntentForPackage("com.samsung.android.goodlock")
+                            if (intent != null) {
+                                context.startActivity(intent)
+                            } else {
+                                val storeIntent = Intent(Intent.ACTION_VIEW, Uri.parse("samsungapps://ProductDetail/com.samsung.android.goodlock"))
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                try {
+                                    context.startActivity(storeIntent)
+                                } catch (_: Exception) {
+                                    uriHandler.openUri("https://galaxystore.samsung.com/detail/com.samsung.android.goodlock")
+                                }
+                            }
+                        }) {
+                            Text(if (homeUpInstalled) "Open Home Up / Good Lock" else "Get Good Lock from Galaxy Store")
                         }
                     }
                 }
