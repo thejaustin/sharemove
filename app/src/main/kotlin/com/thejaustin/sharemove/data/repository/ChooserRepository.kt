@@ -15,6 +15,7 @@ import com.thejaustin.sharemove.shizuku.RootHelper
 import com.thejaustin.sharemove.shizuku.ShizukuHelper
 import com.thejaustin.sharemove.shizuku.ShizukuPlusHelper
 import com.thejaustin.sharemove.util.MultiUserUtil
+import com.thejaustin.sharemove.util.IconPackHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -50,6 +51,7 @@ class ChooserRepository(private val context: Context) {
         hiddenPackages: Set<String>,
         disabledPackages: Set<String>,
         hiddenComponents: Set<String>,
+        iconPackPackage: String? = null,
     ): List<AppEntry> = withContext(Dispatchers.IO) {
         val intent = Intent(category.action).apply {
             category.mimeType?.let { type = it }
@@ -75,10 +77,12 @@ class ChooserRepository(private val context: Context) {
                 // The component the user actually hid may differ from the one the
                 // resolver happened to return first — prefer the recorded one.
                 val storedComp = hiddenComponents.firstOrNull { it.substringBefore('/') == pkg }
+                val rawIcon = ri.loadIcon(pm)
+                val themedIcon = IconPackHelper.loadIcon(context, iconPackPackage, pkg, rawIcon)
                 AppEntry(
                     packageName   = pkg,
                     label         = ri.loadLabel(pm).toString(),
-                    icon          = ri.loadIcon(pm),
+                    icon          = themedIcon,
                     category      = category,
                     isHidden      = isPackageSuspended(pkg) || isComponentDisabled(storedComp ?: comp) || isAppHiddenByDeviceOwner(pkg),
                     isDisabled    = isPackageDisabled(pkg),
@@ -91,7 +95,7 @@ class ChooserRepository(private val context: Context) {
         val ghosts = (hiddenPackages + disabledPackages)
             .filterNot { it in resolvedPackages }
             .mapNotNull { pkg ->
-                installedEntryOrNull(pkg, category, hiddenPackages, hiddenComponents)
+                installedEntryOrNull(pkg, category, hiddenPackages, hiddenComponents, iconPackPackage)
             }
 
         (entries + ghosts).sortedBy { it.label.lowercase() }
@@ -122,14 +126,17 @@ class ChooserRepository(private val context: Context) {
         category: IntentCategory,
         hiddenPackages: Set<String>,
         hiddenComponents: Set<String>,
+        iconPackPackage: String? = null,
     ): AppEntry? = try {
         @Suppress("DEPRECATION")
         val info = pm.getApplicationInfo(packageName, PackageManager.MATCH_UNINSTALLED_PACKAGES)
         val storedComp = hiddenComponents.firstOrNull { it.substringBefore('/') == packageName }
+        val rawIcon = info.loadIcon(pm)
+        val themedIcon = IconPackHelper.loadIcon(context, iconPackPackage, packageName, rawIcon)
         AppEntry(
             packageName   = packageName,
             label         = info.loadLabel(pm).toString(),
-            icon          = info.loadIcon(pm),
+            icon          = themedIcon,
             category      = category,
             isHidden      = isPackageSuspended(packageName) ||
                 (storedComp != null && isComponentDisabled(storedComp)) ||

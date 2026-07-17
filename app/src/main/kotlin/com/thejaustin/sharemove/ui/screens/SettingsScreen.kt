@@ -6,6 +6,8 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -41,9 +43,16 @@ fun SettingsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val defaultApps by viewModel.defaultApps.collectAsStateWithLifecycle()
+    val selectedIconPack by viewModel.selectedIconPack.collectAsStateWithLifecycle()
+    val installedIconPacks by viewModel.installedIconPacks.collectAsStateWithLifecycle()
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
     val versionName = remember { appVersionName(context) }
+    var showIconPackDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        viewModel.refreshIconPacks()
+    }
 
     Scaffold(
         topBar = {
@@ -323,6 +332,97 @@ fun SettingsScreen(
                         }
                     }
                 }
+            }
+
+            Card {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Theming", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = "Customize the appearance of app icons in ShaRemove using custom icon packs.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showIconPackDialog = true }
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("Icon Pack", style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                text = installedIconPacks.firstOrNull { it.packageName == selectedIconPack }?.label ?: "System default",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (showIconPackDialog) {
+                AlertDialog(
+                    onDismissRequest = { showIconPackDialog = false },
+                    title = { Text("Select Icon Pack") },
+                    text = {
+                        Box(modifier = Modifier.heightIn(max = 300.dp)) {
+                            LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                item {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                viewModel.setSelectedIconPack("")
+                                                showIconPackDialog = false
+                                            }
+                                            .padding(vertical = 8.dp, horizontal = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        RadioButton(
+                                            selected = selectedIconPack.isEmpty(),
+                                            onClick = {
+                                                viewModel.setSelectedIconPack("")
+                                                showIconPackDialog = false
+                                            }
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("System default")
+                                    }
+                                }
+                                items(installedIconPacks) { pack ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                viewModel.setSelectedIconPack(pack.packageName)
+                                                showIconPackDialog = false
+                                            }
+                                            .padding(vertical = 8.dp, horizontal = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        RadioButton(
+                                            selected = selectedIconPack == pack.packageName,
+                                            onClick = {
+                                                viewModel.setSelectedIconPack(pack.packageName)
+                                                showIconPackDialog = false
+                                            }
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(pack.label)
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showIconPackDialog = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
             }
 
             Card {

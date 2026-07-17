@@ -58,6 +58,9 @@
             <action android:name="android.intent.action.INSERT" />
             <data android:scheme="content" />
         </intent>
+        <intent>
+            <action android:name="org.adw.launcher.THEMES" />
+        </intent>
     </queries>
 
     <application

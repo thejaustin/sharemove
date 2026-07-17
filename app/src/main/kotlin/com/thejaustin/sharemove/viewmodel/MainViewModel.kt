@@ -60,6 +60,12 @@ data class DefaultAppsState(
     val dialer: DefaultAppInfo? = null,
 )
 
+/** Information about an installed custom icon pack. */
+data class IconPackInfo(
+    val packageName: String,
+    val label: String,
+)
+
 data class UiState(
     val apps: List<AppEntry>       = emptyList(),
     val searchQuery: String        = "",
@@ -107,15 +113,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** null = loading (query in flight for the current category). */
     @OptIn(ExperimentalCoroutinesApi::class)
     private val apps: Flow<List<AppEntry>?> =
-        combine(_selectedCategory, _reloadApps) { category, _ -> category }
-            .flatMapLatest { category ->
+        combine(_selectedCategory, _reloadApps, prefsRepo.selectedIconPack) { category, _, iconPack -> Triple(category, 0, iconPack) }
+            .flatMapLatest { (category, _, iconPack) ->
                 combine(
                     prefsRepo.hiddenPackages(category),
                     prefsRepo.disabledPackages(category),
                     prefsRepo.hiddenComponents(category),
                 ) { hidden, disabled, hiddenComps -> Triple(hidden, disabled, hiddenComps) }
                     .map<Triple<Set<String>, Set<String>, Set<String>>, List<AppEntry>?> { (hidden, disabled, hiddenComps) ->
-                        chooserRepo.queryApps(category, hidden, disabled, hiddenComps)
+                        chooserRepo.queryApps(category, hidden, disabled, hiddenComps, iconPack)
                     }
                     .onStart { emit(null) }
             }
@@ -145,6 +151,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     init {
         refreshCapabilities()
         refreshDefaultApps()
+        refreshIconPacks()
     }
 
     fun refreshCapabilities() {
@@ -363,6 +370,35 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun showErrorMessage(message: String) {
         _events.trySend(UiEvent.Message(message))
+    }
+
+    val selectedIconPack: StateFlow<String> = prefsRepo.selectedIconPack
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+
+    fun setSelectedIconPack(packageName: String) {
+        viewModelScope.launch {
+            prefsRepo.setSelectedIconPack(packageName)
+            refreshApps()
+        }
+    }
+
+    private val _installedIconPacks = MutableStateFlow<List<IconPackInfo>>(emptyList())
+    val installedIconPacks: StateFlow<List<IconPackInfo>> = _installedIconPacks.asStateFlow()
+
+    fun refreshIconPacks() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val pm = getApplication<Application>().packageManager
+            val intent = Intent("org.adw.launcher.THEMES")
+            @Suppress("DEPRECATION")
+            val resolveInfos = pm.queryIntentActivities(intent, 0)
+            val list = resolveInfos.map {
+                IconPackInfo(
+                    packageName = it.activityInfo.packageName,
+                    label = it.loadLabel(pm).toString()
+                )
+            }.sortedBy { it.label.lowercase() }
+            _installedIconPacks.value = list
+        }
     }
 
     fun resetAllChanges() {

@@ -26,6 +26,17 @@ class PreferencesRepository(private val context: Context) {
 
     private val hideModeKey = stringPreferencesKey("hide_mode")
     private val backendKey = stringPreferencesKey("backend")
+    private val iconPackKey = stringPreferencesKey("selected_icon_pack")
+
+    val selectedIconPack: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[iconPackKey] ?: ""
+    }
+
+    suspend fun setSelectedIconPack(packageName: String) {
+        context.dataStore.edit { prefs ->
+            prefs[iconPackKey] = packageName
+        }
+    }
 
     fun hiddenPackages(category: IntentCategory): Flow<Set<String>> =
         context.dataStore.data.map { it[hiddenKey(category)] ?: emptySet() }
