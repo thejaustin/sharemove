@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -13,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.thejaustin.sharemove.data.model.IntentCategory
@@ -30,6 +32,7 @@ fun HomeScreen(
     val state            by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context           = LocalContext.current
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -62,6 +65,20 @@ fun HomeScreen(
                         Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
                 },
+            )
+        },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = {
+                    try {
+                        val testIntent = selectedCategory.getTestIntent(context)
+                        context.startActivity(testIntent)
+                    } catch (e: Exception) {
+                        viewModel.showErrorMessage(e.message ?: "Failed to launch chooser")
+                    }
+                },
+                icon = { Icon(Icons.Default.PlayArrow, contentDescription = null) },
+                text = { Text("Test Chooser") }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },

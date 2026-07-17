@@ -29,8 +29,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /** Events emitted from the ViewModel to the UI layer. */
@@ -355,6 +357,48 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 )
             } else if (failureMessage != null) {
                 _events.trySend(UiEvent.Message(failureMessage ?: "Bulk operation failed"))
+            }
+        }
+    }
+
+    fun showErrorMessage(message: String) {
+        _events.trySend(UiEvent.Message(message))
+    }
+
+    fun resetAllChanges() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val state = uiState.value
+            val backend = state.selectedBackend
+
+            try {
+                // 1. Restore all components hidden in COMPONENT mode across all categories
+                for (category in IntentCategory.entries) {
+                    val hiddenComps = prefsRepo.hiddenComponents(category).first()
+                    if (hiddenComps.isNotEmpty()) {
+                        chooserRepo.setComponentHidden(hiddenComps, false, backend)
+                        prefsRepo.setHiddenComponents(category, emptySet(), false)
+                    }
+                }
+
+                // 2. Restore all packages suspended or disabled across all categories
+                for (category in IntentCategory.entries) {
+                    val hiddenPkgs = prefsRepo.hiddenPackages(category).first()
+                    for (pkg in hiddenPkgs) {
+                        chooserRepo.setPackageHidden(pkg, false, backend)
+                        prefsRepo.setHidden(category, pkg, false)
+                    }
+
+                    val disabledPkgs = prefsRepo.disabledPackages(category).first()
+                    for (pkg in disabledPkgs) {
+                        chooserRepo.setPackageDisabled(pkg, false, backend)
+                        prefsRepo.setDisabled(category, pkg, false)
+                    }
+                }
+
+                _events.trySend(UiEvent.Message("All apps and components restored to default"))
+                refreshApps()
+            } catch (e: Exception) {
+                _events.trySend(UiEvent.Message("Reset failed: ${e.message}"))
             }
         }
     }

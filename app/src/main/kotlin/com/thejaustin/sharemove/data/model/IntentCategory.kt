@@ -1,5 +1,9 @@
 package com.thejaustin.sharemove.data.model
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+
 enum class IntentCategory(
     val displayName: String,
     val action: String,
@@ -64,5 +68,41 @@ enum class IntentCategory(
         displayName = "Calendar",
         action      = "android.intent.action.INSERT",
         scheme      = "content",
-    ),
+    );
+
+    /**
+     * Create a system chooser test intent matching this category.
+     */
+    fun getTestIntent(context: Context): Intent {
+        val baseIntent = Intent(action).apply {
+            mimeType?.let { type = it }
+            scheme?.let { data = Uri.parse("$it://example.com") }
+        }
+        when (this) {
+            APK_INSTALLER -> {
+                baseIntent.data = Uri.parse("content://com.thejaustin.sharemove.fileprovider/test.apk")
+            }
+            EMAIL -> {
+                baseIntent.data = Uri.parse("mailto:test@example.com")
+            }
+            SHARE_TEXT -> {
+                baseIntent.putExtra(Intent.EXTRA_TEXT, "Sample test share text from ShaRemove.")
+            }
+            SHARE_IMAGE -> {
+                baseIntent.putExtra(Intent.EXTRA_TEXT, "Sample image share")
+                baseIntent.putExtra(Intent.EXTRA_STREAM, Uri.parse("content://media/external/images/media/1"))
+            }
+            SHARE_FILE -> {
+                baseIntent.putExtra(Intent.EXTRA_STREAM, Uri.parse("content://media/external/downloads/1"))
+            }
+            PHONE_DIALER -> {
+                baseIntent.data = Uri.parse("tel:5550199")
+            }
+            CALENDAR -> {
+                baseIntent.putExtra("title", "Test event from ShaRemove")
+            }
+            else -> {}
+        }
+        return Intent.createChooser(baseIntent, "Test Intent Chooser: $displayName")
+    }
 }
