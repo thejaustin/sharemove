@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.thejaustin.sharemove.data.model.IntentCategory
 import com.thejaustin.sharemove.ui.components.AppToggleCard
-import com.thejaustin.sharemove.ui.components.ShizukuBanner
+import com.thejaustin.sharemove.ui.components.BackendStatusBanner
 import com.thejaustin.sharemove.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,10 +58,13 @@ fun HomeScreen(
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
 
-            ShizukuBanner(
-                available           = state.shizukuAvailable,
-                hasPermission       = state.shizukuPermission,
-                onRequestPermission = viewModel::requestShizukuPermission,
+            BackendStatusBanner(
+                selectedBackend            = state.selectedBackend,
+                shizukuAvailable           = state.shizukuAvailable,
+                shizukuPermission          = state.shizukuPermission,
+                rootAvailable              = state.rootAvailable,
+                deviceOwnerActive          = state.deviceOwnerActive,
+                onRequestShizukuPermission = viewModel::requestShizukuPermission,
             )
 
             if (state.suspendIneffective) {

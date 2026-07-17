@@ -8,20 +8,36 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.thejaustin.sharemove.data.repository.Backend
 
 @Composable
-fun ShizukuBanner(
-    available: Boolean,
-    hasPermission: Boolean,
-    onRequestPermission: () -> Unit,
+fun BackendStatusBanner(
+    selectedBackend: Backend,
+    shizukuAvailable: Boolean,
+    shizukuPermission: Boolean,
+    rootAvailable: Boolean,
+    deviceOwnerActive: Boolean,
+    onRequestShizukuPermission: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (available && hasPermission) return
-
-    val message = if (!available)
-        "Shizuku is not running. Start Shizuku to manage the chooser sheet."
-    else
-        "ShaRemove needs Shizuku permission to hide apps."
+    val message = when (selectedBackend) {
+        Backend.SHIZUKU, Backend.SHIZUKU_PLUS -> {
+            if (shizukuAvailable && shizukuPermission) return
+            if (!shizukuAvailable) {
+                "Shizuku is not running. Start Shizuku to manage the chooser sheet."
+            } else {
+                "ShaRemove needs Shizuku permission to hide apps."
+            }
+        }
+        Backend.ROOT -> {
+            if (rootAvailable) return
+            "Root access is not available. Grant root access or select another backend in Settings."
+        }
+        Backend.DEVICE_OWNER -> {
+            if (deviceOwnerActive) return
+            "Device Owner is not active. Provision the app via ADB or select another backend in Settings."
+        }
+    }
 
     Card(
         colors = CardDefaults.cardColors(
@@ -47,9 +63,11 @@ fun ShizukuBanner(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onErrorContainer,
                 )
-                if (available && !hasPermission) {
+                if ((selectedBackend == Backend.SHIZUKU || selectedBackend == Backend.SHIZUKU_PLUS) &&
+                    shizukuAvailable && !shizukuPermission
+                ) {
                     Spacer(Modifier.height(8.dp))
-                    TextButton(onClick = onRequestPermission) {
+                    TextButton(onClick = onRequestShizukuPermission) {
                         Text("Grant permission")
                     }
                 }

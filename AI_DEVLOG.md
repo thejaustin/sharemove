@@ -2,6 +2,12 @@
 
 Cross-session continuity notes. Newest entry first.
 
+## 2026-07-17 (Antigravity CLI) — Backend-Aware Warning Banner UX
+
+- **Generalizing Warning Banner**:
+  - Replaced the Shizuku-only `ShizukuBanner` with a backend-aware `BackendStatusBanner`.
+  - The warning banner now dynamically displays the status, warnings, and required actions based on the *currently selected* backend (Shizuku, Shizuku+, Root, or Device Owner), rather than showing a permanent Shizuku warning when root/device owner modes are active.
+
 ## 2026-07-17 (Antigravity CLI) — Samsung Multi-Profile & Good Lock Integration
 
 - **Samsung Multi-User / Secure Folder Support**:
