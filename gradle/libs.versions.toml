@@ -8,7 +8,7 @@ datastore              = "1.1.1"
 activity               = "1.9.3"
 core-ktx               = "1.15.0"
 coroutines             = "1.8.1"
-dadb                   = "1.2.6"
+dadb                   = "2.0.0"
 
 [libraries]
 compose-bom              = { group = "androidx.compose",           name = "compose-bom",                   version.ref = "compose-bom" }
@@ -31,7 +31,7 @@ shizuku-provider         = { group = "dev.rikka.shizuku",           name = "prov
 
 datastore                = { group = "androidx.datastore",          name = "datastore-preferences",         version.ref = "datastore" }
 coroutines               = { group = "org.jetbrains.kotlinx",       name = "kotlinx-coroutines-android",    version.ref = "coroutines" }
-dadb                     = { group = "com.mobile-dev-inc",          name = "dadb",                          version.ref = "dadb" }
+dadb                     = { group = "dev.mobile",                  name = "dadb",                          version.ref = "dadb" }
 
 [plugins]
 android-application      = { id = "com.android.application",             version.ref = "agp" }
