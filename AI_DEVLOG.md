@@ -2,6 +2,15 @@
 
 Cross-session continuity notes. Newest entry first.
 
+## 2026-07-17 (Antigravity CLI) — Bulk Toggle & List Animations
+
+- **Bulk Hide / Unhide**:
+  - Implemented `bulkToggleHidden` method in `MainViewModel` to hide/unhide all filtered visible apps in the active category.
+  - Added support for bulk undo actions: clicking "Undo" after a bulk hide/unhide toggles all affected packages back to their original state.
+  - Added a status bar above the app list showing the counts of visible vs. hidden packages along with "Hide All" and "Unhide All" buttons.
+- **List Item Animations**:
+  - Added `Modifier.animateItem()` to lazy list entries in `HomeScreen` to animate insertions, deletions, and positioning shifts smoothly.
+
 ## 2026-07-17 (Antigravity CLI) — Undo Snackbar, Long-Press Info, Unified Banner, New Categories
 
 - **Undo Snackbar**: Replaced raw `String` message channel with a typed `UiEvent` sealed class. After every successful hide/show or disable/enable toggle, a snackbar now shows `"<App> hidden/visible"` with an **Undo** action button that reverts the last toggle immediately.

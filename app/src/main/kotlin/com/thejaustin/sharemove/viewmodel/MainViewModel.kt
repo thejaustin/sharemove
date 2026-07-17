@@ -230,4 +230,66 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             )
         }
     }
+
+    fun bulkToggleHidden(hidden: Boolean) {
+        viewModelScope.launch {
+            val state = uiState.value
+            val category = _selectedCategory.value
+            val backend = state.selectedBackend
+            val targetApps = state.apps.filter { it.isHidden != hidden && !it.isDisabled }
+            if (targetApps.isEmpty()) return@launch
+
+            var successCount = 0
+            var failureMessage: String? = null
+
+            for (entry in targetApps) {
+                val result = if (hidden) {
+                    if (state.hideMode == HideMode.COMPONENT) {
+                        val components = chooserRepo.queryComponentsForPackage(entry.packageName, category)
+                        chooserRepo.setComponentHidden(components, true, backend)
+                            .onSuccess { prefsRepo.setHiddenComponents(category, components, true) }
+                    } else {
+                        chooserRepo.setPackageHidden(entry.packageName, true, backend)
+                    }
+                } else {
+                    val storedComponents = prefsRepo.hiddenComponentsFor(category, entry.packageName)
+                    if (storedComponents.isNotEmpty()) {
+                        chooserRepo.setComponentHidden(storedComponents, false, backend)
+                            .onSuccess { prefsRepo.setHiddenComponents(category, storedComponents, false) }
+                    } else {
+                        val components = chooserRepo.queryComponentsForPackage(entry.packageName, category)
+                        if (components.isNotEmpty()) {
+                            chooserRepo.setComponentHidden(components, false, backend)
+                        } else {
+                            chooserRepo.setPackageHidden(entry.packageName, false, backend)
+                        }
+                    }
+                }
+
+                result.fold(
+                    onSuccess = {
+                        prefsRepo.setHidden(category, entry.packageName, hidden)
+                        successCount++
+                    },
+                    onFailure = {
+                        failureMessage = it.message
+                    }
+                )
+            }
+
+            if (successCount > 0) {
+                _events.trySend(
+                    UiEvent.ToggleResult(
+                        label = if (successCount == 1) targetApps.first().label else "$successCount apps",
+                        hidden = hidden,
+                        onUndo = {
+                            bulkToggleHidden(!hidden)
+                        }
+                    )
+                )
+            } else if (failureMessage != null) {
+                _events.trySend(UiEvent.Message(failureMessage ?: "Bulk operation failed"))
+            }
+        }
+    }
 }

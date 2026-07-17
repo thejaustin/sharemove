@@ -112,6 +112,38 @@ fun HomeScreen(
                 shape      = RoundedCornerShape(16.dp),
             )
 
+            if (!state.isLoading && state.apps.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val visibleCount = state.apps.count { !it.isHidden && !it.isDisabled }
+                    val hiddenCount = state.apps.count { it.isHidden }
+                    Text(
+                        text = "$visibleCount visible • $hiddenCount hidden",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(
+                            onClick = { viewModel.bulkToggleHidden(true) },
+                            enabled = visibleCount > 0
+                        ) {
+                            Text("Hide All")
+                        }
+                        TextButton(
+                            onClick = { viewModel.bulkToggleHidden(false) },
+                            enabled = hiddenCount > 0
+                        ) {
+                            Text("Unhide All")
+                        }
+                    }
+                }
+            }
+
             when {
                 state.isLoading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -137,6 +169,7 @@ fun HomeScreen(
                     ) {
                         items(state.apps, key = { it.packageName }) { entry ->
                             AppToggleCard(
+                                modifier          = Modifier.animateItem(),
                                 entry             = entry,
                                 showDisableOption = state.canExecute && state.selectedBackend != com.thejaustin.sharemove.data.repository.Backend.DEVICE_OWNER,
                                 onToggleHidden    = { viewModel.toggleHidden(entry) },
