@@ -37,20 +37,29 @@ object ShizukuPlusHelper {
         val method = ipm.javaClass.methods.firstOrNull { it.name == "setPackagesSuspendedAsUser" }
             ?: throw NoSuchMethodException("setPackagesSuspendedAsUser not found on IPackageManager")
 
-        val packages = arrayOf(packageName)
-        val result = method.invoke(
-            ipm,
-            packages,
-            suspended,
-            null, // appExtras (PersistableBundle)
-            null, // launcherExtras (PersistableBundle)
-            null, // dialogInfo (SuspendDialogInfo)
-            callingPackage,
-            userId
-        ) as? Array<*>
+        val paramTypes = method.parameterTypes
+        val args = arrayOfNulls<Any>(paramTypes.size)
+        for (i in paramTypes.indices) {
+            val type = paramTypes[i]
+            args[i] = when {
+                type == Array<String>::class.java || type.componentType == String::class.java -> arrayOf(packageName)
+                type == Boolean::class.javaPrimitiveType || type == Boolean::class.java -> suspended
+                type == Int::class.javaPrimitiveType || type == Int::class.java -> {
+                    // Match userId parameter location: usually last, or second-to-last if callingPackage string is last
+                    if (i == paramTypes.lastIndex || (i == paramTypes.lastIndex - 1 && paramTypes.last() == String::class.java)) userId else 0
+                }
+                type == String::class.java -> callingPackage
+                else -> null // PersistableBundle, SuspendDialogInfo, etc.
+            }
+        }
 
-        if (result != null && result.contains(packageName)) {
-            throw Exception("Package manager refused to suspend/unsuspend package $packageName")
+        try {
+            val result = method.invoke(ipm, *args) as? Array<*>
+            if (result != null && result.contains(packageName)) {
+                throw Exception("Package manager refused to suspend/unsuspend package $packageName")
+            }
+        } catch (e: java.lang.reflect.InvocationTargetException) {
+            throw e.cause ?: e
         }
     }
 
@@ -64,7 +73,11 @@ object ShizukuPlusHelper {
             Int::class.java,
             Int::class.java
         )
-        method.invoke(ipm, componentName, newState, flags, userId)
+        try {
+            method.invoke(ipm, componentName, newState, flags, userId)
+        } catch (e: java.lang.reflect.InvocationTargetException) {
+            throw e.cause ?: e
+        }
     }
 
     /** Enable or disable an entire package. */
@@ -78,6 +91,10 @@ object ShizukuPlusHelper {
             Int::class.java,
             String::class.java
         )
-        method.invoke(ipm, packageName, newState, flags, userId, callingPackage)
+        try {
+            method.invoke(ipm, packageName, newState, flags, userId, callingPackage)
+        } catch (e: java.lang.reflect.InvocationTargetException) {
+            throw e.cause ?: e
+        }
     }
 }

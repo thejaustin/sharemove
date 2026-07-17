@@ -157,7 +157,7 @@ fun HomeScreen(
                         items(state.apps, key = { it.packageName }) { entry ->
                             AppToggleCard(
                                 entry             = entry,
-                                showDisableOption = state.canExecute,
+                                showDisableOption = state.canExecute && state.selectedBackend != com.thejaustin.sharemove.data.repository.Backend.DEVICE_OWNER,
                                 onToggleHidden    = { viewModel.toggleHidden(entry) },
                                 onToggleDisabled  = { viewModel.toggleDisabled(entry) },
                             )
